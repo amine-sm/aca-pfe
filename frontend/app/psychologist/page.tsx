@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircle,
   BadgeCheck,
@@ -36,6 +36,8 @@ import {
 import { getMyPsychologistPayouts } from "@/lib/paymentsApi";
 import { createSlot, getMySlots, deleteSlot } from "@/lib/slotsApi";
 
+type TabKey = "profile" | "slots" | "appointments" | "patients" | "payouts";
+
 function formatDateTime(value: any) {
   if (!value) return "—";
 
@@ -68,6 +70,27 @@ function formatSlotDate(value: any) {
     month: "2-digit",
     year: "numeric",
   });
+}
+
+function getDateInputValue(value: any) {
+  if (!value) return "";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value).slice(0, 10);
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function openDatePicker(e: React.MouseEvent<HTMLInputElement>) {
+  const input = e.currentTarget as HTMLInputElement & { showPicker?: () => void };
+  input.showPicker?.();
 }
 
 function getTodayDate() {
@@ -141,6 +164,8 @@ export default function PsychologistDashboardPage() {
 
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchText, setSearchText] = useState("");
+  const [appointmentDateFilter, setAppointmentDateFilter] = useState("");
+  const [slotDateFilter, setSlotDateFilter] = useState("");
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(6);
@@ -151,6 +176,8 @@ export default function PsychologistDashboardPage() {
   const [actionLoadingId, setActionLoadingId] = useState<number | string | null>(
     null
   );
+
+  const [activeTab, setActiveTab] = useState<TabKey>("slots");
 
   async function load() {
     setError("");
@@ -174,7 +201,12 @@ export default function PsychologistDashboardPage() {
       setPatients((patientsData as any).patients || []);
       setAppointments(appointmentsList);
       setFilteredAppointments(
-        applyFilterAndSearch(appointmentsList, statusFilter, searchText)
+        applyFilterAndSearch(
+          appointmentsList,
+          statusFilter,
+          searchText,
+          appointmentDateFilter
+        )
       );
       setPayouts(payoutsList);
       setSlots(slotsList);
@@ -186,11 +218,23 @@ export default function PsychologistDashboardPage() {
     }
   }
 
-  function applyFilterAndSearch(list: any[], filter: string, search: string) {
+  function applyFilterAndSearch(
+    list: any[],
+    filter: string,
+    search: string,
+    dateFilter: string
+  ) {
     let result = [...list];
 
     if (filter !== "all") {
       result = result.filter((appointment) => appointment.status === filter);
+    }
+
+    if (dateFilter) {
+      result = result.filter(
+        (appointment) =>
+          getDateInputValue(appointment.appointment_date) === dateFilter
+      );
     }
 
     const query = search.trim().toLowerCase();
@@ -214,7 +258,7 @@ export default function PsychologistDashboardPage() {
     setStatusFilter(value);
     setCurrentPage(1);
     setFilteredAppointments(
-      applyFilterAndSearch(appointments, value, searchText)
+      applyFilterAndSearch(appointments, value, searchText, appointmentDateFilter)
     );
   }
 
@@ -222,7 +266,15 @@ export default function PsychologistDashboardPage() {
     setSearchText(value);
     setCurrentPage(1);
     setFilteredAppointments(
-      applyFilterAndSearch(appointments, statusFilter, value)
+      applyFilterAndSearch(appointments, statusFilter, value, appointmentDateFilter)
+    );
+  }
+
+  function handleAppointmentDateChange(value: string) {
+    setAppointmentDateFilter(value);
+    setCurrentPage(1);
+    setFilteredAppointments(
+      applyFilterAndSearch(appointments, statusFilter, searchText, value)
     );
   }
 
@@ -318,7 +370,7 @@ export default function PsychologistDashboardPage() {
 
       setAppointments(list);
       setFilteredAppointments(
-        applyFilterAndSearch(list, statusFilter, searchText)
+        applyFilterAndSearch(list, statusFilter, searchText, appointmentDateFilter)
       );
       setSlots((slotsData as any).slots || []);
       setCurrentPage(1);
@@ -411,6 +463,52 @@ export default function PsychologistDashboardPage() {
 
     return pages;
   }, [safeCurrentPage, totalPages]);
+
+  const filteredSlots = useMemo(() => {
+    if (!slotDateFilter) return slots;
+
+    return slots.filter(
+      (slot) => getDateInputValue(slot.slot_date) === slotDateFilter
+    );
+  }, [slots, slotDateFilter]);
+
+  const dashboardTabs: Array<{
+    key: TabKey;
+    label: string;
+    icon: React.ReactNode;
+    count?: number | string;
+  }> = [
+    {
+      key: "profile",
+      label: "Profil",
+      icon: <Stethoscope size={18} />,
+      count: profile ? 1 : 0,
+    },
+    {
+      key: "slots",
+      label: "Créneaux",
+      icon: <Clock size={18} />,
+      count: slots.length,
+    },
+    {
+      key: "appointments",
+      label: "Rendez-vous",
+      icon: <CalendarCheck size={18} />,
+      count: appointments.length,
+    },
+    {
+      key: "patients",
+      label: "Patients",
+      icon: <UsersRound size={18} />,
+      count: patients.length,
+    },
+    {
+      key: "payouts",
+      label: "Revenus",
+      icon: <Wallet size={18} />,
+      count: formatMoney(totalPayoutAmount),
+    },
+  ];
 
   if (loading) {
     return (
@@ -578,6 +676,15 @@ export default function PsychologistDashboardPage() {
           />
         </section>
 
+        <DashboardTabs
+          tabs={dashboardTabs}
+          activeTab={activeTab}
+          onChange={setActiveTab}
+        />
+
+        <AnimatePresence mode="wait">
+          {activeTab === "profile" && (
+            <TabPanel key="profile-tab">
         {profile && (
           <motion.section
             initial={{ opacity: 0, y: 24 }}
@@ -632,7 +739,11 @@ export default function PsychologistDashboardPage() {
             </div>
           </motion.section>
         )}
+            </TabPanel>
+          )}
 
+          {activeTab === "slots" && (
+            <TabPanel key="slots-tab">
         <section className="mb-8 rounded-[34px] border border-slate-100 bg-white/90 p-6 shadow-2xl shadow-slate-200/70 backdrop-blur md:p-8">
           <SectionTitle
             icon={<Clock size={30} />}
@@ -731,13 +842,44 @@ export default function PsychologistDashboardPage() {
             </div>
           </form>
 
+          <div className="mt-7 flex flex-col gap-3 rounded-[24px] border border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-black text-slate-900">Filtrer les créneaux par date</p>
+              <p className="mt-1 text-xs font-semibold text-slate-500">Utilisez le calendrier pour afficher seulement une journée.</p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={slotDateFilter}
+                onClick={openDatePicker}
+                onChange={(e) => setSlotDateFilter(e.target.value)}
+                className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 outline-none focus:border-[#1B4F59] focus:ring-4 focus:ring-teal-100"
+              />
+
+              {slotDateFilter && (
+                <button
+                  type="button"
+                  onClick={() => setSlotDateFilter("")}
+                  className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-600 transition hover:bg-teal-50 hover:text-[#1B4F59]"
+                >
+                  Tout
+                </button>
+              )}
+            </div>
+          </div>
+
           <div className="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {slots.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm font-bold text-slate-500">
                 Aucun créneau ajouté.
               </div>
+            ) : filteredSlots.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-orange-200 bg-orange-50 p-5 text-sm font-bold text-orange-700">
+                Aucun créneau trouvé pour cette date.
+              </div>
             ) : (
-              slots.map((slot, index) => (
+              filteredSlots.map((slot, index) => (
                 <div
                   key={`${slot.id}-${slot.appointment_id || "empty"}-${index}`}
                   className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-teal-100 hover:shadow-xl hover:shadow-teal-900/10"
@@ -815,7 +957,11 @@ export default function PsychologistDashboardPage() {
             )}
           </div>
         </section>
+            </TabPanel>
+          )}
 
+          {activeTab === "appointments" && (
+            <TabPanel key="appointments-tab">
         <motion.section
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
@@ -839,11 +985,17 @@ export default function PsychologistDashboardPage() {
             </div>
           </div>
 
-          <div className="mt-7 grid gap-4 lg:grid-cols-[1fr_280px]">
+          <div className="mt-7 grid gap-4 xl:grid-cols-[1fr_260px_260px]">
             <SearchInput
               value={searchText}
               onChange={handleSearchChange}
               placeholder="Rechercher un rendez-vous..."
+            />
+
+            <DateFilterInput
+              value={appointmentDateFilter}
+              onChange={handleAppointmentDateChange}
+              onClear={() => handleAppointmentDateChange("")}
             />
 
             <FilterSelect value={statusFilter} onChange={handleFilterChange} />
@@ -982,7 +1134,11 @@ export default function PsychologistDashboardPage() {
             </>
           )}
         </section>
+            </TabPanel>
+          )}
 
+          {activeTab === "patients" && (
+            <TabPanel key="patients-tab">
         <section className="mb-8 rounded-[34px] border border-slate-100 bg-white/90 p-6 shadow-2xl shadow-slate-200/70 backdrop-blur md:p-8">
           <SectionTitle
             icon={<UsersRound size={30} />}
@@ -1051,7 +1207,11 @@ export default function PsychologistDashboardPage() {
             </div>
           )}
         </section>
+            </TabPanel>
+          )}
 
+          {activeTab === "payouts" && (
+            <TabPanel key="payouts-tab">
         <section className="rounded-[34px] border border-slate-100 bg-white/90 p-6 shadow-2xl shadow-slate-200/70 backdrop-blur md:p-8">
           <SectionTitle
             icon={<Wallet size={30} />}
@@ -1135,8 +1295,88 @@ export default function PsychologistDashboardPage() {
             </div>
           )}
         </section>
+            </TabPanel>
+          )}
+        </AnimatePresence>
       </div>
     </main>
+  );
+}
+
+
+function DashboardTabs({
+  tabs,
+  activeTab,
+  onChange,
+}: {
+  tabs: Array<{
+    key: TabKey;
+    label: string;
+    icon: React.ReactNode;
+    count?: number | string;
+  }>;
+  activeTab: TabKey;
+  onChange: (tab: TabKey) => void;
+}) {
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      className="mb-8 rounded-[30px] border border-slate-100 bg-white/90 p-3 shadow-2xl shadow-slate-200/70 backdrop-blur"
+    >
+      <div className="flex gap-2 overflow-x-auto p-1">
+        {tabs.map((tab) => {
+          const active = activeTab === tab.key;
+
+          return (
+            <motion.button
+              key={tab.key}
+              type="button"
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => onChange(tab.key)}
+              className={`relative flex h-14 shrink-0 items-center gap-2 overflow-hidden rounded-2xl px-4 text-sm font-black transition ${
+                active
+                  ? "text-white shadow-lg shadow-teal-900/15"
+                  : "bg-slate-50 text-slate-600 hover:bg-teal-50 hover:text-[#1B4F59]"
+              }`}
+            >
+              {active && (
+                <motion.span
+                  layoutId="psychologist-active-tab"
+                  className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#1B4F59] to-[#2E7B86]"
+                  transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                />
+              )}
+
+              <span className="relative z-10 inline-flex">{tab.icon}</span>
+              <span className="relative z-10 whitespace-nowrap">{tab.label}</span>
+              <span
+                className={`relative z-10 rounded-full px-2 py-0.5 text-[11px] ${
+                  active ? "bg-white/15 text-white" : "bg-white text-slate-500"
+                }`}
+              >
+                {tab.count ?? 0}
+              </span>
+            </motion.button>
+          );
+        })}
+      </div>
+    </motion.section>
+  );
+}
+
+function TabPanel({ children }: { children: React.ReactNode }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 18, scale: 0.99 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -14, scale: 0.99 }}
+      transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+    >
+      {children}
+    </motion.div>
   );
 }
 
@@ -1413,6 +1653,49 @@ function SearchInput({
           placeholder={placeholder}
           className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-12 pr-4 text-sm font-semibold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-[#1B4F59] focus:bg-white focus:ring-4 focus:ring-teal-100"
         />
+      </div>
+    </div>
+  );
+}
+
+function DateFilterInput({
+  value,
+  onChange,
+  onClear,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onClear: () => void;
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-bold text-slate-700">
+        Date
+      </label>
+
+      <div className="relative">
+        <CalendarDays
+          size={18}
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+        />
+
+        <input
+          type="date"
+          value={value}
+          onClick={openDatePicker}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-12 pr-16 text-sm font-black text-slate-800 outline-none transition focus:border-[#1B4F59] focus:bg-white focus:ring-4 focus:ring-teal-100"
+        />
+
+        {value && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl bg-white px-2.5 py-1 text-[11px] font-black text-slate-500 shadow-sm transition hover:bg-teal-50 hover:text-[#1B4F59]"
+          >
+            Tout
+          </button>
+        )}
       </div>
     </div>
   );

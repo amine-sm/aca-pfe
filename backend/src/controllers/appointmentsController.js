@@ -1,6 +1,60 @@
 const { query } = require("../database/db");
 
 // =======================
+// HELPERS DATE MYSQL
+// =======================
+function toMysqlDateOnly(value) {
+  if (!value) return null;
+
+  // Si MySQL retourne déjà une string YYYY-MM-DD ou YYYY-MM-DDTHH...
+  if (typeof value === "string") {
+    return value.slice(0, 10);
+  }
+
+  // Si MySQL retourne un objet Date JS
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function toMysqlTimeOnly(value) {
+  if (!value) return null;
+
+  const time = String(value).trim();
+
+  // Exemple: "23:00:00" => "23:00:00"
+  if (/^\d{2}:\d{2}:\d{2}$/.test(time)) {
+    return time;
+  }
+
+  // Exemple: "23:00" => "23:00:00"
+  if (/^\d{2}:\d{2}$/.test(time)) {
+    return `${time}:00`;
+  }
+
+  return null;
+}
+
+function buildMysqlDateTime(dateValue, timeValue) {
+  const date = toMysqlDateOnly(dateValue);
+  const time = toMysqlTimeOnly(timeValue);
+
+  if (!date || !time) {
+    return null;
+  }
+
+  return `${date} ${time}`;
+}
+
+// =======================
 // CREATE APPOINTMENT USER
 // =======================
 async function createAppointment(req, res) {
@@ -80,7 +134,21 @@ async function createAppointment(req, res) {
       });
     }
 
-    const appointmentDate = `${slot.slot_date} ${slot.start_time}`;
+    // ✅ CORRECTION ICI
+    // Avant: const appointmentDate = `${slot.slot_date} ${slot.start_time}`;
+    // Problème: MySQL recevait "Wed Jun 03 2026 00:00:00 GMT+0100 ... 23:00:00"
+    // Maintenant: MySQL reçoit "2026-06-03 23:00:00"
+    const appointmentDate = buildMysqlDateTime(
+      slot.slot_date,
+      slot.start_time
+    );
+
+    if (!appointmentDate) {
+      return res.status(400).json({
+        success: false,
+        message: "Date ou heure du créneau invalide.",
+      });
+    }
 
     const result = await query(
       `
@@ -257,7 +325,7 @@ async function getPsychologistAppointments(req, res) {
       LEFT JOIN users u ON u.id = a.user_id
       LEFT JOIN psychologist_slots s ON s.id = a.slot_id
       WHERE a.psychologist_id = ?
-      ORDER BY a.created_at DESC
+      ORDER BY a.appointment_date DESC
       `,
       [psychologistId]
     );

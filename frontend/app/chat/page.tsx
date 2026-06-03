@@ -51,12 +51,10 @@ import type {
   SmartAnalysis,
   LanguageInfo,
   PipelineUsed,
-  PipelineForce,
   EmergencyInfo,
 } from "@/lib/smartChatApi";
 import { CrisisModal } from "../components/chat/CrisisModal";
 import { SmartAnalysisBadge } from "../components/chat/SmartAnalysisBadge";
-
 
 // ============================================
 // Types
@@ -104,11 +102,16 @@ interface Therapy {
 // ============================================
 // Suggestions
 // ============================================
-const SUGGESTIONS: Array<{ icon: any; title: string; prompt: string }> = [
+const SUGGESTIONS: Array<{
+  icon: React.ElementType;
+  title: string;
+  prompt: string;
+}> = [
   {
     icon: HeartPulse,
     title: "Je me sens stressé aujourd'hui",
-    prompt: "Je me sens vraiment stressé aujourd'hui et j'ai du mal à me calmer. Pouvez-vous m'aider ?",
+    prompt:
+      "Je me sens vraiment stressé aujourd'hui et j'ai du mal à me calmer. Pouvez-vous m'aider ?",
   },
   {
     icon: AlertTriangle,
@@ -123,7 +126,8 @@ const SUGGESTIONS: Array<{ icon: any; title: string; prompt: string }> = [
   {
     icon: Lightbulb,
     title: "Conseils pour avancer",
-    prompt: "Quelles sont les premières étapes concrètes que je peux mettre en place ?",
+    prompt:
+      "Quelles sont les premières étapes concrètes que je peux mettre en place ?",
   },
 ];
 
@@ -137,10 +141,16 @@ export default function ChatPage() {
 
 function ChatLoadingState() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
-      <div className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] px-6 py-4 shadow-lg">
-        <Loader2 className="animate-spin text-[#1B4F59] dark:text-teal-400" size={22} />
-        <p className="font-semibold text-[var(--text)]">Chargement…</p>
+    <main
+      suppressHydrationWarning
+      className="flex min-h-screen items-center justify-center bg-white"
+    >
+      <div
+        suppressHydrationWarning
+        className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 py-4 shadow-lg"
+      >
+        <Loader2 className="animate-spin text-[#1B4F59]" size={22} />
+        <p className="font-semibold text-slate-900">Chargement…</p>
       </div>
     </main>
   );
@@ -174,11 +184,13 @@ function ChatInner() {
   const [showInsights, setShowInsights] = useState(false);
 
   const [crisisModalOpen, setCrisisModalOpen] = useState(false);
-  const [crisisEmergencyInfo, setCrisisEmergencyInfo] = useState<EmergencyInfo | null>(null);
+  const [crisisEmergencyInfo, setCrisisEmergencyInfo] =
+    useState<EmergencyInfo | null>(null);
   const [chatBlocked, setChatBlocked] = useState(false);
 
-  // ✨ NOUVEAU : Pipeline Selector
-  const [selectedPipeline, setSelectedPipeline] = useState<"auto" | "dziribert" | "classic_nlp">("auto");
+  const [selectedPipeline, setSelectedPipeline] = useState<
+    "auto" | "dziribert" | "classic_nlp"
+  >("auto");
   const [pipelineMenuOpen, setPipelineMenuOpen] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -187,25 +199,33 @@ function ChatInner() {
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
+
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
   }, [text]);
 
   useEffect(() => {
     if (loading) return;
+
     loadConversations();
+
     if (conversationId) {
       loadConversation(conversationId);
     }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    bottomRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "end",
+    });
   }, [messages, sending]);
 
   const loadConversations = useCallback(async () => {
     setLoadingConvs(true);
+
     try {
       const data: any = await getMyConversations();
       setConversations(data.conversations || []);
@@ -219,10 +239,12 @@ function ChatInner() {
   const loadConversation = useCallback(async (id: number) => {
     try {
       const data: any = await getConversationById(id);
+
       const msgs: ChatMessage[] = (data.messages || []).map((m: any) => ({
         ...m,
         _justArrived: false,
       }));
+
       setMessages(msgs);
       setNlp(null);
       setDiagnostic(null);
@@ -236,9 +258,16 @@ function ChatInner() {
   async function handleNewConversation() {
     try {
       setError("");
-      const data: any = await startConversation({ title: "Nouvelle conversation" });
+
+      const data: any = await startConversation({
+        title: "Nouvelle conversation",
+      });
+
       const newId = data.conversation_id || data.conversation?.id;
-      if (!newId) throw new Error("Impossible de créer la conversation");
+
+      if (!newId) {
+        throw new Error("Impossible de créer la conversation");
+      }
 
       setConversationId(newId);
       setMessages([]);
@@ -260,20 +289,24 @@ function ChatInner() {
       setMobileSidebarOpen(false);
       return;
     }
+
     setConversationId(id);
     setMessages([]);
     setChatBlocked(false);
     setMobileSidebarOpen(false);
     router.replace(`/chat?conversation=${id}`);
+
     await loadConversation(id);
   }
 
   async function handleDeleteConversation(id: number, e: React.MouseEvent) {
     e.stopPropagation();
+
     if (!confirm("Supprimer cette conversation ?")) return;
 
     try {
       await deleteConversation(id);
+
       setConversations((prev) => prev.filter((c) => c.id !== id));
 
       if (id === conversationId) {
@@ -288,20 +321,28 @@ function ChatInner() {
 
   async function handleSend(e?: React.FormEvent) {
     e?.preventDefault();
+
     if (!text.trim() || sending || chatBlocked) return;
 
     const messageText = text.trim();
+
     setText("");
     setError("");
 
     let convId = conversationId;
+
     if (!convId) {
       try {
         const data: any = await startConversation({
           title: messageText.slice(0, 40),
         });
+
         convId = data.conversation_id || data.conversation?.id;
-        if (!convId) throw new Error("Création conversation impossible");
+
+        if (!convId) {
+          throw new Error("Création conversation impossible");
+        }
+
         setConversationId(convId);
         router.replace(`/chat?conversation=${convId}`);
       } catch (err: any) {
@@ -313,9 +354,14 @@ function ChatInner() {
     setSending(true);
 
     const userMsgIndex = messages.length;
+
     setMessages((prev) => [
       ...prev,
-      { sender_type: "user", message_text: messageText, _justArrived: false },
+      {
+        sender_type: "user",
+        message_text: messageText,
+        _justArrived: false,
+      },
     ]);
 
     try {
@@ -323,7 +369,8 @@ function ChatInner() {
         message: messageText,
         conversation_id: convId || undefined,
         country: "DZ",
-        force_pipeline: selectedPipeline === "auto" ? null : selectedPipeline,
+        force_pipeline:
+          selectedPipeline === "auto" ? null : selectedPipeline,
       });
 
       if (response.is_crisis) {
@@ -361,11 +408,14 @@ function ChatInner() {
           sentiment: "négatif",
           emotion: "détresse",
           riskLevel: "Élevé",
-          riskScore: Math.round((response.analysis?.crisis?.confidence || 0.9) * 100),
+          riskScore: Math.round(
+            (response.analysis?.crisis?.confidence || 0.9) * 100
+          ),
           emotionalState: "Crise détectée",
           detected_language: response.language?.language,
           pipeline_used: response.pipeline_used,
         });
+
         setDiagnostic({
           priority: "URGENT",
           orientation: "Contact professionnel immédiat",
@@ -395,6 +445,7 @@ function ChatInner() {
         ]);
 
         const an = response.analysis;
+
         setNlp({
           sentiment: an?.sentiment?.label || "neutre",
           emotion: an?.emotions?.top || an?.addiction_type?.label || "—",
@@ -402,11 +453,14 @@ function ChatInner() {
           riskScore: Math.round((an?.crisis?.confidence || 0) * 100),
           riskLevel: getRiskLevelFromSeverity(an?.crisis?.severity),
           emotionalState:
-            an?.sentiment?.label === "negatif" ? "État négatif" : "État stable",
+            an?.sentiment?.label === "negatif"
+              ? "État négatif"
+              : "État stable",
           detected_language: response.language?.language,
           pipeline_used: response.pipeline_used,
           addiction_type: an?.addiction_type?.label,
         });
+
         setDiagnostic({
           priority: an?.crisis?.severity || "low",
           orientation:
@@ -433,6 +487,7 @@ function ChatInner() {
 
   const hasMessages = messages.length > 0;
   const hasInsights = nlp || diagnostic || therapy;
+
   const insightsBadge = useMemo(() => {
     if (!nlp?.riskLevel || nlp.riskLevel === "unknown") return null;
     return nlp.riskLevel;
@@ -442,7 +497,7 @@ function ChatInner() {
 
   return (
     <main
-      className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(27,79,89,0.14),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(46,111,126,0.16),transparent_36%),var(--bg)] text-[var(--text)]"
+      className="relative min-h-screen overflow-hidden bg-white text-slate-900"
       style={{ paddingTop: "80px" }}
     >
       <CrisisModal
@@ -451,13 +506,9 @@ function ChatInner() {
         onClose={() => setCrisisModalOpen(false)}
       />
 
-      <div className="pointer-events-none absolute left-[-120px] top-24 h-72 w-72 rounded-full bg-[#1B4F59]/10 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-[-140px] right-[-100px] h-96 w-96 rounded-full bg-[#2E6F7E]/10 blur-3xl" />
-
       <div className="relative z-10 flex h-[calc(100vh-80px)] overflow-hidden px-0 lg:px-3 lg:pb-3">
-        {/* Sidebar gauche desktop */}
         <aside
-          className={`hidden h-full shrink-0 border border-[var(--border)] bg-[var(--sidebar)]/90 shadow-xl shadow-black/5 backdrop-blur-xl transition-all duration-300 lg:flex lg:flex-col ${
+          className={`hidden h-full shrink-0 border border-slate-200 bg-white shadow-xl shadow-black/5 backdrop-blur-xl transition-all duration-300 lg:flex lg:flex-col ${
             sidebarOpen ? "w-80 rounded-3xl" : "w-0 overflow-hidden border-0"
           }`}
         >
@@ -471,7 +522,6 @@ function ChatInner() {
           />
         </aside>
 
-        {/* Sidebar mobile */}
         <AnimatePresence>
           {mobileSidebarOpen && (
             <>
@@ -483,12 +533,13 @@ function ChatInner() {
                 className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
                 style={{ top: "80px" }}
               />
+
               <motion.aside
                 initial={{ x: "-100%" }}
                 animate={{ x: 0 }}
                 exit={{ x: "-100%" }}
                 transition={{ type: "tween", duration: 0.25 }}
-                className="fixed left-0 z-50 flex h-[calc(100vh-80px)] w-80 flex-col border-r border-[var(--border)] bg-[var(--sidebar)]/95 shadow-2xl backdrop-blur-xl lg:hidden"
+                className="fixed left-0 z-50 flex h-[calc(100vh-80px)] w-80 flex-col border-r border-slate-200 bg-white shadow-2xl backdrop-blur-xl lg:hidden"
                 style={{ top: "80px" }}
               >
                 <SidebarContent
@@ -505,34 +556,39 @@ function ChatInner() {
           )}
         </AnimatePresence>
 
-        {/* Zone centrale */}
-        <section className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-transparent lg:ml-3 lg:rounded-3xl lg:border lg:border-[var(--border)] lg:bg-[var(--chat-bg)]/80 lg:shadow-xl lg:shadow-black/5 lg:backdrop-blur-xl">
-          {/* Header */}
-          <header className="flex items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--bg-elevated)]/75 px-4 py-3.5 backdrop-blur-xl md:px-6">
+        <section className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-transparent lg:ml-3 lg:rounded-3xl lg:border lg:border-slate-200 lg:bg-white lg:shadow-xl lg:shadow-black/5 lg:backdrop-blur-xl">
+          <header className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white/75 px-4 py-3.5 backdrop-blur-xl md:px-6">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setSidebarOpen((v) => !v)}
                 aria-label="Basculer la barre latérale"
-                className="hidden h-9 w-9 items-center justify-center rounded-lg text-[var(--muted)] transition hover:bg-[var(--teal-soft)] hover:text-[#1B4F59] dark:hover:text-teal-300 lg:flex"
+                className="hidden h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-teal-50 hover:text-[#1B4F59] lg:flex"
               >
-                {sidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+                {sidebarOpen ? (
+                  <PanelLeftClose size={18} />
+                ) : (
+                  <PanelLeftOpen size={18} />
+                )}
               </button>
 
               <button
                 onClick={() => setMobileSidebarOpen(true)}
                 aria-label="Ouvrir le menu"
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--muted)] transition hover:bg-[var(--teal-soft)] hover:text-[#1B4F59] dark:hover:text-teal-300 lg:hidden"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-teal-50 hover:text-[#1B4F59] lg:hidden"
               >
                 <Menu size={18} />
               </button>
 
               <div className="flex items-center gap-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1B4F59] to-[#2E6F7E] text-white shadow-lg shadow-teal-900/20 ring-1 ring-white/20 dark:from-teal-500 dark:to-teal-600">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1B4F59] to-[#2E6F7E] text-white shadow-lg shadow-teal-900/20 ring-1 ring-white/20">
                   <HeartPulse size={16} />
                 </div>
+
                 <div>
-                  <p className="text-sm font-black tracking-tight text-[var(--text)]">Assistant ACA</p>
-                  <p className="text-[11px] font-medium text-[var(--muted)]">
+                  <p className="text-sm font-black tracking-tight text-slate-900">
+                    Assistant ACA
+                  </p>
+                  <p className="text-[11px] font-medium text-slate-500">
                     🇩🇿 Smart Routing — DziriBERT + Qwen2.5
                   </p>
                 </div>
@@ -554,7 +610,7 @@ function ChatInner() {
               {hasInsights && (
                 <button
                   onClick={() => setShowInsights((v) => !v)}
-                  className="hidden items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-1.5 text-xs font-bold text-[var(--text-secondary)] transition hover:border-teal-300 hover:text-[#1B4F59] dark:hover:text-teal-300 md:inline-flex"
+                  className="hidden items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:border-teal-300 hover:text-[#1B4F59] md:inline-flex"
                 >
                   <Brain size={14} />
                   {showInsights ? "Masquer" : "Voir"} l&apos;analyse
@@ -563,25 +619,26 @@ function ChatInner() {
             </div>
           </header>
 
-          {/* Erreur */}
           <AnimatePresence>
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                className="mx-4 mt-3 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300 md:mx-6"
+                className="mx-4 mt-3 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 md:mx-6"
               >
                 <AlertCircle size={16} className="mt-0.5 shrink-0" />
                 <span className="flex-1">{error}</span>
-                <button onClick={() => setError("")} className="text-red-500 hover:text-red-700 dark:text-red-400">
+                <button
+                  onClick={() => setError("")}
+                  className="text-red-500 hover:text-red-700"
+                >
                   <X size={14} />
                 </button>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Messages */}
           <div className="flex min-h-0 flex-1 overflow-hidden">
             <div className="flex flex-1 flex-col overflow-y-auto">
               {!hasMessages && !sending ? (
@@ -598,7 +655,10 @@ function ChatInner() {
                       <MessageBubble
                         key={msg.id ?? i}
                         message={msg}
-                        isLatest={i === messages.length - 1 && msg.sender_type === "assistant"}
+                        isLatest={
+                          i === messages.length - 1 &&
+                          msg.sender_type === "assistant"
+                        }
                       />
                     ))}
 
@@ -608,12 +668,16 @@ function ChatInner() {
                       <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="rounded-2xl border-2 border-red-200 bg-red-50 p-4 text-center dark:border-red-500/30 dark:bg-red-500/10"
+                        className="rounded-2xl border-2 border-red-200 bg-red-50 p-4 text-center"
                       >
-                        <AlertTriangle size={24} className="mx-auto mb-2 text-red-500" />
-                        <p className="text-sm font-bold text-red-900 dark:text-red-200">
+                        <AlertTriangle
+                          size={24}
+                          className="mx-auto mb-2 text-red-500"
+                        />
+                        <p className="text-sm font-bold text-red-900">
                           Conversation interrompue pour votre sécurité
                         </p>
+
                         <button
                           onClick={() => setCrisisModalOpen(true)}
                           className="mt-3 rounded-xl bg-red-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-600"
@@ -629,7 +693,6 @@ function ChatInner() {
               )}
             </div>
 
-            {/* Insights panel */}
             <AnimatePresence>
               {showInsights && hasInsights && (
                 <motion.aside
@@ -637,7 +700,7 @@ function ChatInner() {
                   animate={{ width: 340, opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="hidden shrink-0 overflow-hidden border-l border-[var(--border)] bg-[var(--bg-elevated)]/95 shadow-xl backdrop-blur-xl md:block"
+                  className="hidden shrink-0 overflow-hidden border-l border-slate-200 bg-white/95 shadow-xl backdrop-blur-xl md:block"
                 >
                   <InsightsPanel
                     nlp={nlp}
@@ -650,13 +713,9 @@ function ChatInner() {
             </AnimatePresence>
           </div>
 
-          {/* ============================================
-              Input avec PIPELINE SELECTOR (style Kimi!)
-              ============================================ */}
-          <div className="border-t border-[var(--border)] bg-[var(--bg-elevated)]/85 px-4 py-4 shadow-[0_-18px_50px_rgba(15,23,42,0.06)] backdrop-blur-xl md:px-6">
+          <div className="border-t border-slate-200 bg-white/85 px-4 py-4 shadow-[0_-18px_50px_rgba(15,23,42,0.06)] backdrop-blur-xl md:px-6">
             <form onSubmit={handleSend} className="mx-auto w-full max-w-4xl">
-              <div className="group relative overflow-hidden rounded-3xl border border-[var(--border-strong)] bg-[var(--bg-elevated)]/95 shadow-2xl shadow-black/5 ring-1 ring-white/40 transition focus-within:border-[#1B4F59] focus-within:shadow-teal-900/10 dark:ring-white/5 dark:focus-within:border-teal-400">
-                {/* Textarea */}
+              <div className="group relative overflow-hidden rounded-3xl border border-slate-300 bg-white/95 shadow-2xl shadow-black/5 ring-1 ring-white/40 transition focus-within:border-[#1B4F59] focus-within:shadow-teal-900/10">
                 <textarea
                   ref={textareaRef}
                   value={text}
@@ -669,17 +728,17 @@ function ChatInner() {
                       : "Exprime-toi en darija, français ou arabe…"
                   }
                   rows={1}
-                  className="max-h-[220px] min-h-[68px] w-full resize-none bg-transparent px-5 pt-4 pb-2 text-[15px] leading-7 text-[var(--text)] outline-none placeholder:text-[var(--muted-soft)] disabled:opacity-50"
+                  className="max-h-[220px] min-h-[68px] w-full resize-none bg-transparent px-5 pt-4 pb-2 text-[15px] leading-7 text-slate-900 outline-none placeholder:text-slate-400 disabled:opacity-50"
                 />
 
-                {/* Footer avec pipeline selector + bouton envoyer */}
-                <div className="flex items-center justify-between gap-2 border-t border-[var(--border)]/60 px-3 py-3">
-                  {/* Pipeline Selector (style Kimi) */}
+                <div className="flex items-center justify-between gap-2 border-t border-slate-200/60 px-3 py-3">
                   <div className="relative">
                     <button
                       type="button"
-                      onClick={() => setPipelineMenuOpen(!pipelineMenuOpen)}
-                      className="flex items-center gap-1.5 rounded-2xl border border-[var(--border)] bg-[var(--teal-soft)]/40 px-3.5 py-2 text-xs font-black text-[#1B4F59] shadow-sm transition hover:border-teal-300 hover:bg-[var(--teal-soft)] dark:text-teal-300"
+                      onClick={() =>
+                        setPipelineMenuOpen(!pipelineMenuOpen)
+                      }
+                      className="flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-teal-50/40 px-3.5 py-2 text-xs font-black text-[#1B4F59] shadow-sm transition hover:border-teal-300 hover:bg-teal-50"
                     >
                       {selectedPipeline === "auto" && (
                         <>
@@ -687,21 +746,26 @@ function ChatInner() {
                           <span>Auto</span>
                         </>
                       )}
+
                       {selectedPipeline === "dziribert" && (
                         <>
                           <span>🇩🇿</span>
                           <span>DziriBERT</span>
                         </>
                       )}
+
                       {selectedPipeline === "classic_nlp" && (
                         <>
                           <span>🇫🇷</span>
                           <span>Classic NLP</span>
                         </>
                       )}
+
                       <ChevronDown
                         size={12}
-                        className={`transition ${pipelineMenuOpen ? "rotate-180" : ""}`}
+                        className={`transition ${
+                          pipelineMenuOpen ? "rotate-180" : ""
+                        }`}
                       />
                     </button>
 
@@ -712,11 +776,12 @@ function ChatInner() {
                             className="fixed inset-0 z-30"
                             onClick={() => setPipelineMenuOpen(false)}
                           />
+
                           <motion.div
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 8 }}
-                            className="absolute bottom-full left-0 z-40 mb-2 w-72 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] shadow-2xl"
+                            className="absolute bottom-full left-0 z-40 mb-2 w-72 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
                           >
                             <PipelineOption
                               icon={<Sparkles size={16} />}
@@ -728,8 +793,13 @@ function ChatInner() {
                                 setPipelineMenuOpen(false);
                               }}
                             />
+
                             <PipelineOption
-                              icon={<span className="text-lg leading-none">🇩🇿</span>}
+                              icon={
+                                <span className="text-lg leading-none">
+                                  🇩🇿
+                                </span>
+                              }
                               title="DziriBERT"
                               desc="3 modèles fine-tunés sur darija algérienne"
                               active={selectedPipeline === "dziribert"}
@@ -738,8 +808,13 @@ function ChatInner() {
                                 setPipelineMenuOpen(false);
                               }}
                             />
+
                             <PipelineOption
-                              icon={<span className="text-lg leading-none">🇫🇷</span>}
+                              icon={
+                                <span className="text-lg leading-none">
+                                  🇫🇷
+                                </span>
+                              }
                               title="Classic NLP"
                               desc="XLM-RoBERTa + GoEmotions multilingue"
                               active={selectedPipeline === "classic_nlp"}
@@ -754,22 +829,36 @@ function ChatInner() {
                     </AnimatePresence>
                   </div>
 
-                  {/* Bouton Envoyer */}
                   <motion.button
                     type="submit"
                     disabled={sending || !text.trim() || chatBlocked}
-                    whileHover={!sending && text.trim() && !chatBlocked ? { scale: 1.05 } : undefined}
-                    whileTap={!sending && text.trim() && !chatBlocked ? { scale: 0.95 } : undefined}
+                    whileHover={
+                      !sending && text.trim() && !chatBlocked
+                        ? { scale: 1.05 }
+                        : undefined
+                    }
+                    whileTap={
+                      !sending && text.trim() && !chatBlocked
+                        ? { scale: 0.95 }
+                        : undefined
+                    }
                     aria-label="Envoyer le message"
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1B4F59] to-[#2E6F7E] text-white shadow-lg shadow-teal-900/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 dark:from-teal-500 dark:to-teal-400 dark:text-[#04161A] dark:disabled:bg-slate-700"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1B4F59] to-[#2E6F7E] text-white shadow-lg shadow-teal-900/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+                    {sending ? (
+                      <Loader2 size={15} className="animate-spin" />
+                    ) : (
+                      <Send size={15} />
+                    )}
                   </motion.button>
                 </div>
               </div>
 
-              <p className="mt-3 text-center text-[11px] font-semibold text-[var(--muted)]">
-                <ShieldCheck size={11} className="inline-block align-text-bottom" />{" "}
+              <p className="mt-3 text-center text-[11px] font-semibold text-slate-500">
+                <ShieldCheck
+                  size={11}
+                  className="inline-block align-text-bottom"
+                />{" "}
                 Conversation confidentielle · 🇩🇿 DziriBERT en temps réel
               </p>
             </form>
@@ -780,9 +869,6 @@ function ChatInner() {
   );
 }
 
-// ============================================
-// ✨ NOUVEAU : Composant Pipeline Option
-// ============================================
 function PipelineOption({
   icon,
   title,
@@ -800,35 +886,41 @@ function PipelineOption({
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-start gap-3 p-3.5 text-left transition hover:bg-[var(--teal-soft)]/40 ${
-        active ? "bg-[var(--teal-soft)]/60" : ""
+      className={`flex w-full items-start gap-3 p-3.5 text-left transition hover:bg-teal-50/40 ${
+        active ? "bg-teal-50/60" : ""
       }`}
     >
       <div
         className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
           active
-            ? "bg-[#1B4F59] text-white dark:bg-teal-500"
-            : "bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
+            ? "bg-[#1B4F59] text-white"
+            : "bg-white text-slate-700"
         }`}
       >
         {icon}
       </div>
+
       <div className="flex-1">
         <div className="flex items-center justify-between">
-          <p className={`text-sm font-bold ${active ? "text-[#1B4F59] dark:text-teal-300" : "text-[var(--text)]"}`}>
+          <p
+            className={`text-sm font-bold ${
+              active ? "text-[#1B4F59]" : "text-slate-900"
+            }`}
+          >
             {title}
           </p>
-          {active && <Check size={14} className="text-[#1B4F59] dark:text-teal-300" />}
+
+          {active && <Check size={14} className="text-[#1B4F59]" />}
         </div>
-        <p className="mt-0.5 text-xs leading-relaxed text-[var(--muted)]">{desc}</p>
+
+        <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+          {desc}
+        </p>
       </div>
     </button>
   );
 }
 
-// ============================================
-// Sidebar (inchangé)
-// ============================================
 function SidebarContent({
   conversations,
   loadingConvs,
@@ -848,16 +940,22 @@ function SidebarContent({
 }) {
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-[var(--border)] p-4">
+      <div className="border-b border-slate-200 p-4">
         <div className="mb-3 flex items-center gap-2 px-1">
           <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1B4F59] to-[#2E6F7E] text-white shadow-md">
             <HeartPulse size={16} />
           </div>
+
           <div>
-            <p className="text-sm font-black text-[var(--text)]">Conversations</p>
-            <p className="text-[11px] font-semibold text-[var(--muted)]">Historique sécurisé</p>
+            <p className="text-sm font-black text-slate-900">
+              Conversations
+            </p>
+            <p className="text-[11px] font-semibold text-slate-500">
+              Historique sécurisé
+            </p>
           </div>
         </div>
+
         <div className="flex items-center justify-between gap-2">
           <button
             onClick={onNew}
@@ -866,11 +964,12 @@ function SidebarContent({
             <Plus size={16} />
             Nouvelle conversation
           </button>
+
           {onClose && (
             <button
               onClick={onClose}
               aria-label="Fermer"
-              className="flex h-10 w-10 items-center justify-center rounded-2xl text-[var(--muted)] transition hover:bg-[var(--teal-soft)] hover:text-[#1B4F59] dark:hover:text-teal-300"
+              className="flex h-10 w-10 items-center justify-center rounded-2xl text-slate-500 transition hover:bg-teal-50 hover:text-[#1B4F59]"
             >
               <X size={18} />
             </button>
@@ -881,12 +980,17 @@ function SidebarContent({
       <div className="flex-1 overflow-y-auto p-3">
         {loadingConvs ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="animate-spin text-[var(--muted)]" size={18} />
+            <Loader2 className="animate-spin text-slate-500" size={18} />
           </div>
         ) : conversations.length === 0 ? (
           <div className="px-4 py-12 text-center">
-            <MessageSquare size={32} className="mx-auto mb-3 text-[var(--muted-soft)]" />
-            <p className="text-sm font-semibold text-[var(--muted)]">Aucune conversation</p>
+            <MessageSquare
+              size={32}
+              className="mx-auto mb-3 text-slate-400"
+            />
+            <p className="text-sm font-semibold text-slate-500">
+              Aucune conversation
+            </p>
           </div>
         ) : (
           <ul className="space-y-1">
@@ -906,20 +1010,26 @@ function SidebarContent({
                         onSelect(conv.id);
                       }
                     }}
-                    className={`group flex w-full cursor-pointer items-center gap-2 rounded-2xl border px-3 py-3 text-left transition outline-none focus-visible:ring-2 focus-visible:ring-[#1B4F59] dark:focus-visible:ring-teal-400 ${
+                    className={`group flex w-full cursor-pointer items-center gap-2 rounded-2xl border px-3 py-3 text-left transition outline-none focus-visible:ring-2 focus-visible:ring-[#1B4F59] ${
                       isActive
-                        ? "border-teal-200 bg-[var(--teal-soft)] text-[#1B4F59] shadow-sm dark:border-teal-500/30 dark:text-teal-300"
-                        : "border-transparent text-[var(--text-secondary)] hover:border-[var(--border)] hover:bg-[var(--teal-soft)]/45"
+                        ? "border-teal-200 bg-teal-50 text-[#1B4F59] shadow-sm"
+                        : "border-transparent text-slate-700 hover:border-slate-200 hover:bg-teal-50/45"
                     }`}
                   >
-                    <MessageSquare size={15} className="shrink-0 opacity-70" />
-                    <span className="flex-1 truncate text-sm font-semibold">{title}</span>
+                    <MessageSquare
+                      size={15}
+                      className="shrink-0 opacity-70"
+                    />
+
+                    <span className="flex-1 truncate text-sm font-semibold">
+                      {title}
+                    </span>
 
                     <button
                       type="button"
                       onClick={(e) => onDelete(conv.id, e)}
                       aria-label="Supprimer"
-                      className="shrink-0 rounded p-1 text-[var(--muted-soft)] opacity-0 transition hover:bg-red-100 hover:text-red-600 group-hover:opacity-100 dark:hover:bg-red-500/20 dark:hover:text-red-400"
+                      className="shrink-0 rounded p-1 text-slate-400 opacity-0 transition hover:bg-red-100 hover:text-red-600 group-hover:opacity-100"
                     >
                       <Trash2 size={13} />
                     </button>
@@ -931,10 +1041,12 @@ function SidebarContent({
         )}
       </div>
 
-      <div className="border-t border-[var(--border)] p-3">
-        <div className="flex items-center gap-2 rounded-lg bg-[var(--bg-elevated)] px-3 py-2 text-xs">
-          <ShieldCheck size={14} className="text-[#1B4F59] dark:text-teal-400" />
-          <span className="font-semibold text-[var(--text-secondary)]">Espace confidentiel</span>
+      <div className="border-t border-slate-200 p-3">
+        <div className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs">
+          <ShieldCheck size={14} className="text-[#1B4F59]" />
+          <span className="font-semibold text-slate-700">
+            Espace confidentiel
+          </span>
         </div>
       </div>
     </div>
@@ -948,27 +1060,29 @@ function EmptyState({ onPick }: { onPick: (prompt: string) => void }) {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="mx-auto w-full max-w-3xl rounded-[2rem] border border-[var(--border)] bg-[var(--bg-elevated)]/70 p-6 text-center shadow-2xl shadow-black/5 backdrop-blur-xl md:p-10"
+        className="mx-auto w-full max-w-3xl rounded-[2rem] border border-slate-200 bg-white/70 p-6 text-center shadow-2xl shadow-black/5 backdrop-blur-xl md:p-10"
       >
-        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[1.7rem] bg-gradient-to-br from-[#1B4F59] to-[#2E6F7E] text-white shadow-2xl shadow-teal-900/25 ring-8 ring-[var(--teal-soft)] dark:from-teal-500 dark:to-teal-600">
+        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[1.7rem] bg-gradient-to-br from-[#1B4F59] to-[#2E6F7E] text-white shadow-2xl shadow-teal-900/25 ring-8 ring-teal-50">
           <HeartPulse size={30} />
         </div>
 
-        <h1 className="text-3xl font-black tracking-[-0.03em] text-[var(--text)] md:text-4xl">
+        <h1 className="text-3xl font-black tracking-[-0.03em] text-slate-900 md:text-4xl">
           Bonjour, comment allez-vous aujourd&apos;hui&nbsp;?
         </h1>
-        <p className="mx-auto mt-3 max-w-xl text-[15px] leading-7 text-[var(--muted)]">
-          Exprime-toi en darija 🇩🇿, en français 🇫🇷 ou en arabe — l&apos;IA détecte automatiquement.
+
+        <p className="mx-auto mt-3 max-w-xl text-[15px] leading-7 text-slate-500">
+          Exprime-toi en darija 🇩🇿, en français 🇫🇷 ou en arabe — l&apos;IA
+          détecte automatiquement.
         </p>
 
         <div className="mt-5 flex flex-wrap justify-center gap-2">
-          <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-700 dark:bg-purple-500/20 dark:text-purple-300">
+          <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-700">
             🇩🇿 DziriBERT
           </span>
-          <span className="rounded-full bg-teal-100 px-3 py-1 text-xs font-bold text-teal-700 dark:bg-teal-500/20 dark:text-teal-300">
+          <span className="rounded-full bg-teal-100 px-3 py-1 text-xs font-bold text-teal-700">
             🧠 Qwen2.5
           </span>
-          <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-bold text-rose-700 dark:bg-rose-500/20 dark:text-rose-300">
+          <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-bold text-rose-700">
             🛡️ Crisis Protection
           </span>
         </div>
@@ -976,6 +1090,7 @@ function EmptyState({ onPick }: { onPick: (prompt: string) => void }) {
         <div className="mx-auto mt-8 grid max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
           {SUGGESTIONS.map((s, i) => {
             const Icon = s.icon;
+
             return (
               <motion.button
                 key={s.title}
@@ -984,18 +1099,24 @@ function EmptyState({ onPick }: { onPick: (prompt: string) => void }) {
                 transition={{ duration: 0.3, delay: 0.1 + i * 0.05 }}
                 whileHover={{ y: -2 }}
                 onClick={() => onPick(s.prompt)}
-                className="group flex items-start gap-3 rounded-3xl border border-[var(--border)] bg-[var(--bg-elevated)]/85 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-xl hover:shadow-teal-900/10 dark:hover:border-teal-500/40"
+                className="group flex items-start gap-3 rounded-3xl border border-slate-200 bg-white/85 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-xl hover:shadow-teal-900/10"
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--teal-soft)] text-[#1B4F59] transition group-hover:scale-110 dark:text-teal-300">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-[#1B4F59] transition group-hover:scale-110">
                   <Icon size={17} />
                 </div>
+
                 <div className="flex-1">
-                  <p className="text-sm font-bold text-[var(--text)]">{s.title}</p>
-                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--muted)]">{s.prompt}</p>
+                  <p className="text-sm font-bold text-slate-900">
+                    {s.title}
+                  </p>
+                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
+                    {s.prompt}
+                  </p>
                 </div>
+
                 <ChevronRight
                   size={16}
-                  className="mt-1 shrink-0 text-[var(--muted-soft)] transition group-hover:translate-x-1 group-hover:text-[#1B4F59] dark:group-hover:text-teal-300"
+                  className="mt-1 shrink-0 text-slate-400 transition group-hover:translate-x-1 group-hover:text-[#1B4F59]"
                 />
               </motion.button>
             );
@@ -1006,11 +1127,18 @@ function EmptyState({ onPick }: { onPick: (prompt: string) => void }) {
   );
 }
 
-function MessageBubble({ message, isLatest }: { message: ChatMessage; isLatest: boolean }) {
+function MessageBubble({
+  message,
+  isLatest,
+}: {
+  message: ChatMessage;
+  isLatest: boolean;
+}) {
   const isUser = message.sender_type === "user";
   const isAssistant = !isUser;
 
-  const shouldStream = isAssistant && isLatest && message._justArrived === true;
+  const shouldStream =
+    isAssistant && isLatest && message._justArrived === true;
 
   const { displayed, isStreaming } = useStreamingText(
     message.message_text || "",
@@ -1032,12 +1160,15 @@ function MessageBubble({ message, isLatest }: { message: ChatMessage; isLatest: 
             className={`max-w-[78%] rounded-3xl rounded-br-lg px-4 py-3 text-[15px] font-semibold leading-7 shadow-lg shadow-black/5 ${
               message.is_crisis
                 ? "bg-gradient-to-br from-red-500 to-rose-500 text-white"
-                : "bg-gradient-to-br from-[#1B4F59] to-[#2E6F7E] text-white dark:from-teal-500 dark:to-teal-400 dark:text-[#04161A]"
+                : "bg-gradient-to-br from-[#1B4F59] to-[#2E6F7E] text-white"
             }`}
           >
-            <div className="whitespace-pre-wrap break-words">{message.message_text}</div>
+            <div className="whitespace-pre-wrap break-words">
+              {message.message_text}
+            </div>
           </div>
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[var(--teal-soft)] text-[#1B4F59] ring-1 ring-[var(--border)] dark:text-teal-300">
+
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-teal-50 text-[#1B4F59] ring-1 ring-slate-200">
             <User size={15} />
           </div>
         </div>
@@ -1062,24 +1193,26 @@ function MessageBubble({ message, isLatest }: { message: ChatMessage; isLatest: 
       transition={{ duration: 0.2 }}
       className="flex items-start gap-3"
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1B4F59] to-[#2E6F7E] text-white shadow-lg shadow-teal-900/15 dark:from-teal-500 dark:to-teal-600">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1B4F59] to-[#2E6F7E] text-white shadow-lg shadow-teal-900/15">
         <HeartPulse size={15} />
       </div>
 
       <div
         className={`max-w-[88%] rounded-3xl rounded-tl-lg px-4 py-3 shadow-lg shadow-black/5 ${
           message.is_crisis
-            ? "border-2 border-red-300 bg-red-50 text-red-900 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200"
-            : "border border-[var(--border)] bg-[var(--chat-assistant-bg)]/95 text-[var(--chat-assistant-text)] ring-1 ring-white/40 dark:ring-white/5"
+            ? "border-2 border-red-300 bg-red-50 text-red-900"
+            : "border border-slate-200 bg-white text-slate-800 ring-1 ring-white/40"
         }`}
       >
         {message.is_crisis && (
-          <div className="mb-2 inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-red-700 dark:bg-red-500/20 dark:text-red-300">
+          <div className="mb-2 inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-red-700">
             <AlertTriangle size={10} />
             Support d&apos;urgence
           </div>
         )}
+
         <MarkdownRenderer content={displayed} />
+
         {isStreaming && <span className="streaming-caret" />}
       </div>
     </motion.div>
@@ -1088,17 +1221,23 @@ function MessageBubble({ message, isLatest }: { message: ChatMessage; isLatest: 
 
 function TypingIndicator() {
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex items-start gap-3">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1B4F59] to-[#2E6F7E] text-white shadow-lg shadow-teal-900/15 dark:from-teal-500 dark:to-teal-600">
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex items-start gap-3"
+    >
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1B4F59] to-[#2E6F7E] text-white shadow-lg shadow-teal-900/15">
         <HeartPulse size={15} />
       </div>
-      <div className="rounded-3xl rounded-tl-lg border border-[var(--border)] bg-[var(--chat-assistant-bg)]/95 px-5 py-4 shadow-lg shadow-black/5">
+
+      <div className="rounded-3xl rounded-tl-lg border border-slate-200 bg-white px-5 py-4 shadow-lg shadow-black/5">
         <div className="flex items-center gap-1.5">
           <span className="typing-dot" />
           <span className="typing-dot" />
           <span className="typing-dot" />
         </div>
-        <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
+
+        <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
           🇩🇿 DziriBERT + Qwen2.5
         </p>
       </div>
@@ -1119,15 +1258,16 @@ function InsightsPanel({
 }) {
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4">
+      <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
         <div className="flex items-center gap-2">
-          <Brain size={18} className="text-[#1B4F59] dark:text-teal-400" />
-          <h3 className="text-sm font-black text-[var(--text)]">Analyse IA</h3>
+          <Brain size={18} className="text-[#1B4F59]" />
+          <h3 className="text-sm font-black text-slate-900">Analyse IA</h3>
         </div>
+
         <button
           onClick={onClose}
           aria-label="Fermer"
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--muted)] transition hover:bg-[var(--teal-soft)] hover:text-[#1B4F59] dark:hover:text-teal-300"
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-teal-50 hover:text-[#1B4F59]"
         >
           <X size={15} />
         </button>
@@ -1137,36 +1277,71 @@ function InsightsPanel({
         {nlp?.pipeline_used && (
           <Card title="🇩🇿 Smart Routing" icon={<Zap size={14} />}>
             {nlp.detected_language && (
-              <Row label="Langue détectée" value={getLanguageLabel(nlp.detected_language)} />
+              <Row
+                label="Langue détectée"
+                value={getLanguageLabel(nlp.detected_language)}
+              />
             )}
+
             <Row
               label="Pipeline utilisé"
-              value={nlp.pipeline_used === "dziribert" ? "DziriBERT (fine-tuné)" : "NLP classique"}
+              value={
+                nlp.pipeline_used === "dziribert"
+                  ? "DziriBERT (fine-tuné)"
+                  : "NLP classique"
+              }
             />
           </Card>
         )}
 
         {nlp && (
           <Card title="NLP" icon={<Sparkles size={14} />}>
-            {nlp.sentiment && <Row label="Sentiment" value={nlp.sentiment} />}
-            {nlp.emotion && nlp.emotion !== "unknown" && nlp.emotion !== "—" && (
-              <Row label="Émotion" value={nlp.emotion} />
+            {nlp.sentiment && (
+              <Row label="Sentiment" value={nlp.sentiment} />
             )}
-            {nlp.addiction_type && <Row label="Type d'addiction" value={nlp.addiction_type} />}
-            {nlp.intent && nlp.intent !== "unknown" && <Row label="Intention" value={nlp.intent} />}
+
+            {nlp.emotion &&
+              nlp.emotion !== "unknown" &&
+              nlp.emotion !== "—" && (
+                <Row label="Émotion" value={nlp.emotion} />
+              )}
+
+            {nlp.addiction_type && (
+              <Row
+                label="Type d'addiction"
+                value={nlp.addiction_type}
+              />
+            )}
+
+            {nlp.intent && nlp.intent !== "unknown" && (
+              <Row label="Intention" value={nlp.intent} />
+            )}
+
             {typeof nlp.riskScore === "number" && nlp.riskScore > 0 && (
               <Row label="Score risque" value={`${nlp.riskScore}%`} />
             )}
-            {nlp.emotionalState && <Row label="État émotionnel" value={nlp.emotionalState} />}
+
+            {nlp.emotionalState && (
+              <Row
+                label="État émotionnel"
+                value={nlp.emotionalState}
+              />
+            )}
           </Card>
         )}
 
         {diagnostic && (
           <Card title="Diagnostic" icon={<Stethoscope size={14} />}>
-            {diagnostic.priority && <Row label="Priorité" value={diagnostic.priority} />}
-            {diagnostic.orientation && <Row label="Orientation" value={diagnostic.orientation} />}
+            {diagnostic.priority && (
+              <Row label="Priorité" value={diagnostic.priority} />
+            )}
+
+            {diagnostic.orientation && (
+              <Row label="Orientation" value={diagnostic.orientation} />
+            )}
+
             {diagnostic.diagnosticSummary && (
-              <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+              <p className="mt-2 text-sm leading-6 text-slate-700">
                 {diagnostic.diagnosticSummary}
               </p>
             )}
@@ -1174,8 +1349,13 @@ function InsightsPanel({
         )}
 
         {therapy?.message && (
-          <Card title="Suggestion thérapeutique" icon={<HeartPulse size={14} />}>
-            <p className="text-sm leading-6 text-[var(--text-secondary)]">{therapy.message}</p>
+          <Card
+            title="Suggestion thérapeutique"
+            icon={<HeartPulse size={14} />}
+          >
+            <p className="text-sm leading-6 text-slate-700">
+              {therapy.message}
+            </p>
           </Card>
         )}
       </div>
@@ -1183,15 +1363,27 @@ function InsightsPanel({
   );
 }
 
-function Card({ title, icon, children }: { title: string; icon?: React.ReactNode; children: React.ReactNode }) {
+function Card({
+  title,
+  icon,
+  children,
+}: {
+  title: string;
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="rounded-3xl border border-[var(--border)] bg-[var(--bg-elevated)]/80 p-4 shadow-lg shadow-black/5 ring-1 ring-white/30 dark:ring-white/5">
+    <div className="rounded-3xl border border-slate-200 bg-white/80 p-4 shadow-lg shadow-black/5 ring-1 ring-white/30">
       <div className="mb-3 flex items-center gap-2">
-        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-[var(--teal-soft)] text-[#1B4F59] dark:text-teal-300">
+        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-teal-50 text-[#1B4F59]">
           {icon}
         </div>
-        <p className="text-[11px] font-black uppercase tracking-wider text-[var(--muted)]">{title}</p>
+
+        <p className="text-[11px] font-black uppercase tracking-wider text-slate-500">
+          {title}
+        </p>
       </div>
+
       <div className="space-y-1.5">{children}</div>
     </div>
   );
@@ -1199,42 +1391,66 @@ function Card({ title, icon, children }: { title: string; icon?: React.ReactNode
 
 function Row({ label, value }: { label: string; value: any }) {
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-[var(--border)]/60 py-1.5 last:border-b-0">
-      <span className="text-xs font-bold text-[var(--muted)]">{label}</span>
-      <span className="text-right text-sm font-bold text-[var(--text)]">{String(value)}</span>
+    <div className="flex items-start justify-between gap-3 border-b border-slate-200/60 py-1.5 last:border-b-0">
+      <span className="text-xs font-bold text-slate-500">{label}</span>
+      <span className="text-right text-sm font-bold text-slate-900">
+        {String(value)}
+      </span>
     </div>
   );
 }
 
 function riskBadgeClass(level: string): string {
   const norm = String(level).toLowerCase();
-  if (norm.includes("haut") || norm.includes("high") || norm.includes("élevé") || norm.includes("critical")) {
-    return "bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300";
+
+  if (
+    norm.includes("haut") ||
+    norm.includes("high") ||
+    norm.includes("élevé") ||
+    norm.includes("critical")
+  ) {
+    return "bg-red-50 text-red-700";
   }
+
   if (norm.includes("moyen") || norm.includes("moderate")) {
-    return "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300";
+    return "bg-amber-50 text-amber-700";
   }
-  if (norm.includes("bas") || norm.includes("low") || norm.includes("faible")) {
-    return "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300";
+
+  if (
+    norm.includes("bas") ||
+    norm.includes("low") ||
+    norm.includes("faible")
+  ) {
+    return "bg-emerald-50 text-emerald-700";
   }
-  return "bg-slate-100 text-slate-700 dark:bg-slate-700/50 dark:text-slate-300";
+
+  return "bg-slate-100 text-slate-700";
 }
 
 function getRiskLevelFromSeverity(severity?: string): string {
   switch (severity) {
-    case "critical": return "Élevé";
-    case "high": return "Élevé";
-    case "moderate": return "Moyen";
-    default: return "Faible";
+    case "critical":
+      return "Élevé";
+    case "high":
+      return "Élevé";
+    case "moderate":
+      return "Moyen";
+    default:
+      return "Faible";
   }
 }
 
 function getLanguageLabel(lang: string): string {
   switch (lang) {
-    case "darija": return "🇩🇿 Darija";
-    case "french": return "🇫🇷 Français";
-    case "arabic": return "🇸🇦 Arabe";
-    case "mixed": return "🇩🇿🇫🇷 Mixte";
-    default: return lang;
+    case "darija":
+      return "🇩🇿 Darija";
+    case "french":
+      return "🇫🇷 Français";
+    case "arabic":
+      return "🇸🇦 Arabe";
+    case "mixed":
+      return "🇩🇿🇫🇷 Mixte";
+    default:
+      return lang;
   }
 }

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   AlertCircle,
+  CalendarDays,
   CheckCircle2,
   CreditCard,
   Filter,
@@ -20,6 +21,7 @@ import {
   Banknote,
   ChevronLeft,
   ChevronRight,
+  RotateCcw,
 } from "lucide-react";
 
 import { getAdminPayments } from "@/lib/adminApi";
@@ -37,16 +39,11 @@ function formatMoney(value: any, currency = "DZD") {
 
 function parseMetadata(metadata: any) {
   if (!metadata) return {};
-
-  if (typeof metadata === "object") {
-    return metadata;
-  }
+  if (typeof metadata === "object") return metadata;
 
   const clean = String(metadata).trim();
 
-  if (!clean || clean === "undefined" || clean === "null") {
-    return {};
-  }
+  if (!clean || clean === "undefined" || clean === "null") return {};
 
   try {
     return JSON.parse(clean);
@@ -61,10 +58,53 @@ function getBackendBaseUrl() {
 }
 
 function getProofUrl(metadata: any) {
-  const fileUrl = metadata?.proof_file_url || metadata?.proofUrl || metadata?.proof_url;
+  const fileUrl =
+    metadata?.proof_file_url || metadata?.proofUrl || metadata?.proof_url;
+
   if (!fileUrl) return "";
   if (String(fileUrl).startsWith("http")) return String(fileUrl);
+
   return `${getBackendBaseUrl()}${fileUrl}`;
+}
+
+function getPaymentDate(payment: any) {
+  return (
+    payment.created_at ||
+    payment.createdAt ||
+    payment.payment_date ||
+    payment.paid_at ||
+    payment.updated_at ||
+    payment.date ||
+    ""
+  );
+}
+
+function normalizeDateOnly(value: any) {
+  if (!value) return "";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "";
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function formatDate(value: any) {
+  if (!value) return "—";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  return date.toLocaleDateString("fr-DZ", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
 }
 
 export default function AdminPaymentsPage() {
@@ -72,8 +112,11 @@ export default function AdminPaymentsPage() {
 
   const [payments, setPayments] = useState<any[]>([]);
   const [filteredPayments, setFilteredPayments] = useState<any[]>([]);
+
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchText, setSearchText] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(8);
@@ -82,29 +125,17 @@ export default function AdminPaymentsPage() {
   const [error, setError] = useState("");
   const [loadingList, setLoadingList] = useState(false);
 
-  const [actionLoadingId, setActionLoadingId] = useState<number | string | null>(
-    null
-  );
+  const [actionLoadingId, setActionLoadingId] = useState<
+    number | string | null
+  >(null);
 
-  async function load() {
-    setError("");
-    setLoadingList(true);
-
-    try {
-      const data: any = await getAdminPayments();
-      const list = data.payments || [];
-
-      setPayments(list);
-      setFilteredPayments(applyFilterAndSearch(list, statusFilter, searchText));
-      setCurrentPage(1);
-    } catch (err: any) {
-      setError(err.message || "Erreur chargement paiements");
-    } finally {
-      setLoadingList(false);
-    }
-  }
-
-  function applyFilterAndSearch(list: any[], filter: string, search: string) {
+  function applyFilterAndSearch(
+    list: any[],
+    filter: string,
+    search: string,
+    fromDate: string,
+    toDateValue: string
+  ) {
     let result = [...list];
 
     if (filter === "paid") {
@@ -117,8 +148,23 @@ export default function AdminPaymentsPage() {
 
     if (filter === "failed") {
       result = result.filter(
-        (payment) => payment.status === "failed" || payment.status === "rejected"
+        (payment) =>
+          payment.status === "failed" || payment.status === "rejected"
       );
+    }
+
+    if (fromDate) {
+      result = result.filter((payment) => {
+        const paymentDate = normalizeDateOnly(getPaymentDate(payment));
+        return paymentDate && paymentDate >= fromDate;
+      });
+    }
+
+    if (toDateValue) {
+      result = result.filter((payment) => {
+        const paymentDate = normalizeDateOnly(getPaymentDate(payment));
+        return paymentDate && paymentDate <= toDateValue;
+      });
     }
 
     const query = search.trim().toLowerCase();
@@ -131,10 +177,14 @@ export default function AdminPaymentsPage() {
           String(payment.id || "").toLowerCase().includes(query) ||
           String(payment.user_name || "").toLowerCase().includes(query) ||
           String(payment.user_email || "").toLowerCase().includes(query) ||
-          String(payment.psychologist_name || "").toLowerCase().includes(query) ||
+          String(payment.psychologist_name || "")
+            .toLowerCase()
+            .includes(query) ||
           String(payment.payment_method || "").toLowerCase().includes(query) ||
           String(metadata.proof_reference || "").toLowerCase().includes(query) ||
-          String(metadata.proof_original_name || "").toLowerCase().includes(query)
+          String(metadata.proof_original_name || "")
+            .toLowerCase()
+            .includes(query)
         );
       });
     }
@@ -142,21 +192,83 @@ export default function AdminPaymentsPage() {
     return result;
   }
 
-  function handleFilterChange(value: string) {
-    setStatusFilter(value);
+  function refreshFilters(
+    newStatus = statusFilter,
+    newSearch = searchText,
+    newDateFrom = dateFrom,
+    newDateTo = dateTo
+  ) {
     setCurrentPage(1);
-    setFilteredPayments(applyFilterAndSearch(payments, value, searchText));
+    setFilteredPayments(
+      applyFilterAndSearch(
+        payments,
+        newStatus,
+        newSearch,
+        newDateFrom,
+        newDateTo
+      )
+    );
+  }
+
+  async function load() {
+    setError("");
+    setLoadingList(true);
+
+    try {
+      const data: any = await getAdminPayments();
+      const list = data.payments || [];
+
+      const sortedList = [...list].sort((a, b) => {
+        const dateA = new Date(getPaymentDate(a)).getTime() || 0;
+        const dateB = new Date(getPaymentDate(b)).getTime() || 0;
+        return dateB - dateA;
+      });
+
+      setPayments(sortedList);
+      setFilteredPayments(
+        applyFilterAndSearch(
+          sortedList,
+          statusFilter,
+          searchText,
+          dateFrom,
+          dateTo
+        )
+      );
+      setCurrentPage(1);
+    } catch (err: any) {
+      setError(err.message || "Erreur chargement paiements");
+    } finally {
+      setLoadingList(false);
+    }
+  }
+
+  function handleStatusChange(value: string) {
+    setStatusFilter(value);
+    refreshFilters(value, searchText, dateFrom, dateTo);
   }
 
   function handleSearchChange(value: string) {
     setSearchText(value);
-    setCurrentPage(1);
-    setFilteredPayments(applyFilterAndSearch(payments, statusFilter, value));
+    refreshFilters(statusFilter, value, dateFrom, dateTo);
   }
 
-  function handleItemsPerPageChange(value: string) {
-    setItemsPerPage(Number(value));
+  function handleDateFromChange(value: string) {
+    setDateFrom(value);
+    refreshFilters(statusFilter, searchText, value, dateTo);
+  }
+
+  function handleDateToChange(value: string) {
+    setDateTo(value);
+    refreshFilters(statusFilter, searchText, dateFrom, value);
+  }
+
+  function resetFilters() {
+    setStatusFilter("all");
+    setSearchText("");
+    setDateFrom("");
+    setDateTo("");
     setCurrentPage(1);
+    setFilteredPayments(applyFilterAndSearch(payments, "all", "", "", ""));
   }
 
   async function handleAction(actionValue: string, payment: any) {
@@ -178,13 +290,7 @@ export default function AdminPaymentsPage() {
       }
 
       setMessage(data?.message || "Action effectuée avec succès");
-
-      const refreshed: any = await getAdminPayments();
-      const list = refreshed.payments || [];
-
-      setPayments(list);
-      setFilteredPayments(applyFilterAndSearch(list, statusFilter, searchText));
-      setCurrentPage(1);
+      await load();
     } catch (err: any) {
       setError(err.message || "Erreur action paiement");
     } finally {
@@ -193,9 +299,7 @@ export default function AdminPaymentsPage() {
   }
 
   useEffect(() => {
-    if (!loading) {
-      load();
-    }
+    if (!loading) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
 
@@ -207,17 +311,20 @@ export default function AdminPaymentsPage() {
     return sum;
   }, 0);
 
-  const paidCount = payments.filter((payment) => payment.status === "paid")
-    .length;
+  const paidCount = payments.filter((payment) => payment.status === "paid").length;
 
-  const pendingCount = payments.filter((payment) => payment.status === "pending")
-    .length;
+  const pendingCount = payments.filter(
+    (payment) => payment.status === "pending"
+  ).length;
 
   const failedCount = payments.filter(
     (payment) => payment.status === "failed" || payment.status === "rejected"
   ).length;
 
-  const totalPages = Math.max(1, Math.ceil(filteredPayments.length / itemsPerPage));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredPayments.length / itemsPerPage)
+  );
 
   const safeCurrentPage = Math.min(currentPage, totalPages);
 
@@ -229,9 +336,14 @@ export default function AdminPaymentsPage() {
   }, [filteredPayments, safeCurrentPage, itemsPerPage]);
 
   const startItem =
-    filteredPayments.length === 0 ? 0 : (safeCurrentPage - 1) * itemsPerPage + 1;
+    filteredPayments.length === 0
+      ? 0
+      : (safeCurrentPage - 1) * itemsPerPage + 1;
 
-  const endItem = Math.min(safeCurrentPage * itemsPerPage, filteredPayments.length);
+  const endItem = Math.min(
+    safeCurrentPage * itemsPerPage,
+    filteredPayments.length
+  );
 
   const visiblePages = useMemo(() => {
     const pages: number[] = [];
@@ -253,9 +365,9 @@ export default function AdminPaymentsPage() {
 
   if (loading) {
     return (
-      <main className="relative min-h-screen bg-[#F7FAFB]">
+      <main className="min-h-screen bg-[#F7FAFB]">
         <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center px-4">
-          <div className="rounded-[28px] border border-slate-100 bg-white p-8 shadow-2xl shadow-slate-200/70">
+          <div className="rounded-[28px] border border-slate-100 bg-white p-8 shadow-xl">
             <div className="flex items-center gap-3">
               <Loader2 className="animate-spin text-[#1B4F59]" size={24} />
               <p className="font-bold text-slate-700">Chargement...</p>
@@ -269,54 +381,46 @@ export default function AdminPaymentsPage() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#F7FAFB] text-slate-900">
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-40 left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-teal-200/30 blur-3xl" />
-        <div className="absolute right-[-180px] top-40 h-[460px] w-[460px] rounded-full bg-cyan-200/30 blur-3xl" />
         <div className="absolute bottom-[-220px] left-[-160px] h-[520px] w-[520px] rounded-full bg-emerald-200/30 blur-3xl" />
         <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(15,23,42,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.05)_1px,transparent_1px)] bg-[size:64px_64px] opacity-30" />
       </div>
 
-      <div className="relative z-10 mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+      <div className="relative z-10 mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <motion.section
-          initial={{ opacity: 0, y: 28 }}
+          initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
           className="mb-8 overflow-hidden rounded-[34px] bg-[#1B4F59] p-7 text-white shadow-2xl shadow-teal-900/20 md:p-10"
         >
-          <div className="relative">
-            <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-cyan-300/20 blur-3xl" />
-            <div className="absolute -bottom-28 -left-28 h-72 w-72 rounded-full bg-emerald-300/20 blur-3xl" />
-
-            <div className="relative z-10 flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
-              <div className="max-w-3xl">
-                <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-bold text-white backdrop-blur">
-                  <CreditCard size={16} />
-                  Administration
-                </div>
-
-                <h1 className="mt-6 text-4xl font-black tracking-tight md:text-5xl">
-                  Validation des paiements
-                </h1>
-
-                <p className="mt-5 max-w-2xl text-lg leading-8 text-teal-50/85">
-                  Gérez les paiements manuels, validez les preuves, confirmez
-                  les rendez-vous et suivez les revenus validés.
-                </p>
+          <div className="flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-bold text-white">
+                <CreditCard size={16} />
+                Administration
               </div>
 
-              <button
-                type="button"
-                onClick={load}
-                disabled={loadingList}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-[#1B4F59] shadow-xl transition hover:-translate-y-0.5 hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {loadingList ? (
-                  <Loader2 size={18} className="animate-spin" />
-                ) : (
-                  <RefreshCcw size={18} />
-                )}
-                Actualiser
-              </button>
+              <h1 className="mt-6 text-4xl font-black tracking-tight md:text-5xl">
+                Validation des paiements
+              </h1>
+
+              <p className="mt-5 max-w-2xl text-lg leading-8 text-teal-50/90">
+                Validez les reçus, filtrez par date et gérez les paiements des
+                patients.
+              </p>
             </div>
+
+            <button
+              type="button"
+              onClick={load}
+              disabled={loadingList}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-[#1B4F59] shadow-xl transition hover:-translate-y-0.5 hover:bg-teal-50 disabled:opacity-70"
+            >
+              {loadingList ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : (
+                <RefreshCcw size={18} />
+              )}
+              Actualiser
+            </button>
           </div>
         </motion.section>
 
@@ -359,42 +463,7 @@ export default function AdminPaymentsPage() {
           />
         </section>
 
-        <motion.section
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1, duration: 0.55 }}
-          className="mb-8 rounded-[34px] border border-slate-100 bg-white/90 p-6 shadow-2xl shadow-slate-200/70 backdrop-blur md:p-8"
-        >
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-teal-50 px-4 py-2 text-sm font-bold text-[#1B4F59]">
-                <Filter size={16} />
-                Filtres
-              </div>
-
-              <h2 className="mt-4 text-3xl font-black tracking-tight text-slate-950">
-                Rechercher et filtrer
-              </h2>
-
-              <p className="mt-2 max-w-3xl leading-7 text-slate-500">
-                Filtrez les paiements par statut ou recherchez par patient,
-                psychologue, référence, méthode ou identifiant.
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-7 grid gap-4 lg:grid-cols-[1fr_280px]">
-            <SearchInput
-              value={searchText}
-              onChange={handleSearchChange}
-              placeholder="Rechercher un paiement..."
-            />
-
-            <FilterSelect value={statusFilter} onChange={handleFilterChange} />
-          </div>
-        </motion.section>
-
-        <section className="rounded-[34px] border border-slate-100 bg-white/90 p-6 shadow-2xl shadow-slate-200/70 backdrop-blur md:p-8">
+        <section className="rounded-[34px] border border-slate-100 bg-white/95 p-6 shadow-2xl shadow-slate-200/70 backdrop-blur md:p-8">
           <div className="mb-7 flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full bg-teal-50 px-4 py-2 text-sm font-bold text-[#1B4F59]">
@@ -417,6 +486,52 @@ export default function AdminPaymentsPage() {
             </div>
           </div>
 
+          <div className="mb-6 rounded-[28px] border border-slate-100 bg-slate-50 p-5">
+            <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h3 className="flex items-center gap-2 text-lg font-black text-slate-950">
+                  <Filter size={18} className="text-[#1B4F59]" />
+                  Filtres de recherche
+                </h3>
+
+                <p className="mt-1 text-sm font-semibold text-slate-500">
+                  Filtre par statut, date, patient, email, référence ou méthode.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-[#1B4F59] transition hover:bg-teal-50"
+              >
+                <RotateCcw size={16} />
+                Réinitialiser
+              </button>
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-[1.2fr_220px_200px_200px]">
+              <SearchInput
+                value={searchText}
+                onChange={handleSearchChange}
+                placeholder="Rechercher paiement..."
+              />
+
+              <FilterSelect value={statusFilter} onChange={handleStatusChange} />
+
+              <DateInput
+                label="Du"
+                value={dateFrom}
+                onChange={handleDateFromChange}
+              />
+
+              <DateInput
+                label="Au"
+                value={dateTo}
+                onChange={handleDateToChange}
+              />
+            </div>
+          </div>
+
           {loadingList ? (
             <div className="flex min-h-[260px] items-center justify-center rounded-[28px] border border-slate-100 bg-slate-50">
               <div className="flex items-center gap-3">
@@ -436,6 +551,7 @@ export default function AdminPaymentsPage() {
                     Affichage {startItem} - {endItem} sur{" "}
                     {filteredPayments.length} paiement(s)
                   </p>
+
                   <p className="mt-1 text-xs font-semibold text-slate-500">
                     Page {safeCurrentPage} sur {totalPages}
                   </p>
@@ -448,7 +564,10 @@ export default function AdminPaymentsPage() {
 
                   <select
                     value={String(itemsPerPage)}
-                    onChange={(e) => handleItemsPerPageChange(e.target.value)}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
                     className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 outline-none focus:border-[#1B4F59] focus:ring-4 focus:ring-teal-100"
                   >
                     <option value="5">5</option>
@@ -461,12 +580,12 @@ export default function AdminPaymentsPage() {
 
               <div className="overflow-hidden rounded-[26px] border border-slate-100">
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[1280px] border-collapse">
+                  <table className="w-full min-w-[1180px] border-collapse">
                     <thead>
                       <tr className="bg-slate-50 text-left">
-                        <TableHead>ID</TableHead>
                         <TableHead>Patient</TableHead>
                         <TableHead>Psychologue</TableHead>
+                        <TableHead>Date</TableHead>
                         <TableHead>Montant</TableHead>
                         <TableHead>Statut</TableHead>
                         <TableHead>Méthode</TableHead>
@@ -479,18 +598,13 @@ export default function AdminPaymentsPage() {
                     <tbody className="divide-y divide-slate-100 bg-white">
                       {paginatedPayments.map((payment) => {
                         const metadata = parseMetadata(payment.metadata);
+                        const proofUrl = getProofUrl(metadata);
 
                         return (
                           <tr
                             key={payment.id}
                             className="transition hover:bg-slate-50/80"
                           >
-                            <TableCell>
-                              <span className="font-black text-slate-950">
-                                #{payment.id}
-                              </span>
-                            </TableCell>
-
                             <TableCell>
                               <div className="flex items-center gap-3">
                                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-50 text-[#1B4F59]">
@@ -521,6 +635,13 @@ export default function AdminPaymentsPage() {
                             </TableCell>
 
                             <TableCell>
+                              <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
+                                <CalendarDays size={14} />
+                                {formatDate(getPaymentDate(payment))}
+                              </span>
+                            </TableCell>
+
+                            <TableCell>
                               <strong className="text-slate-950">
                                 {formatMoney(payment.amount, payment.currency)}
                               </strong>
@@ -543,15 +664,21 @@ export default function AdminPaymentsPage() {
                             </TableCell>
 
                             <TableCell>
-                              {getProofUrl(metadata) ? (
+                              {proofUrl ? (
                                 <a
-                                  href={getProofUrl(metadata)}
+                                  href={proofUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#1B4F59] px-4 py-2 text-xs font-black text-white shadow-lg shadow-teal-900/15 transition hover:-translate-y-0.5 hover:bg-[#163f47]"
+                                  style={{ color: "#fff" }}
+                                  className="inline-flex min-w-[92px] items-center justify-center gap-2 rounded-2xl bg-[#1B4F59] px-4 py-2 text-xs font-black text-white shadow-lg shadow-teal-900/15 transition hover:-translate-y-0.5 hover:bg-[#143E46]"
                                 >
-                                  <ReceiptText size={14} />
-                                  Voir reçu
+                                  <ReceiptText
+                                    size={14}
+                                    style={{ color: "#fff" }}
+                                  />
+                                  <span style={{ color: "#fff" }}>
+                                    Voir reçu
+                                  </span>
                                 </a>
                               ) : (
                                 <span className="inline-flex rounded-full bg-red-50 px-3 py-1 text-xs font-black text-red-600">
@@ -589,6 +716,167 @@ export default function AdminPaymentsPage() {
   );
 }
 
+function SearchInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-bold text-slate-700">
+        Recherche
+      </label>
+
+      <div className="relative">
+        <Search
+          size={18}
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+        />
+
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="h-14 w-full rounded-2xl border border-slate-200 bg-white pl-12 pr-4 text-sm font-semibold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-[#1B4F59] focus:ring-4 focus:ring-teal-100"
+        />
+      </div>
+    </div>
+  );
+}
+
+function DateInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-bold text-slate-700">
+        {label}
+      </label>
+
+      <div className="relative">
+        <CalendarDays
+          size={18}
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+        />
+
+        <input
+          type="date"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-14 w-full rounded-2xl border border-slate-200 bg-white pl-12 pr-4 text-sm font-black text-slate-800 outline-none transition focus:border-[#1B4F59] focus:ring-4 focus:ring-teal-100"
+        />
+      </div>
+    </div>
+  );
+}
+
+function FilterSelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-bold text-slate-700">
+        Statut
+      </label>
+
+      <div className="relative">
+        <Filter
+          size={18}
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+        />
+
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-14 w-full appearance-none rounded-2xl border border-slate-200 bg-white pl-12 pr-10 text-sm font-black text-slate-800 outline-none transition focus:border-[#1B4F59] focus:ring-4 focus:ring-teal-100"
+        >
+          <option value="all">Tous</option>
+          <option value="pending">En attente</option>
+          <option value="paid">Payés</option>
+          <option value="failed">Refusés</option>
+        </select>
+
+        <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
+          ▾
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ActionSelect({
+  payment,
+  loadingId,
+  onAction,
+}: {
+  payment: any;
+  loadingId: number | string | null;
+  onAction: (actionValue: string, payment: any) => void;
+}) {
+  const isLoading = loadingId === payment.id;
+  const isPaid = payment.status === "paid";
+  const isFailed = payment.status === "failed" || payment.status === "rejected";
+
+  return (
+    <div className="relative ml-auto w-[210px]">
+      {isLoading ? (
+        <Loader2
+          size={17}
+          className="absolute left-4 top-1/2 z-10 -translate-y-1/2 animate-spin text-[#1B4F59]"
+        />
+      ) : (
+        <CheckCircle2
+          size={17}
+          className="absolute left-4 top-1/2 z-10 -translate-y-1/2 text-[#1B4F59]"
+        />
+      )}
+
+      <select
+        value=""
+        disabled={isLoading || isPaid || isFailed}
+        onChange={(e) => onAction(e.target.value, payment)}
+        className="h-12 w-full appearance-none rounded-2xl border border-slate-200 bg-white pl-11 pr-10 text-sm font-black text-[#1B4F59] outline-none transition hover:bg-teal-50 focus:border-[#1B4F59] focus:ring-4 focus:ring-teal-100 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <option value="">
+          {isLoading
+            ? "Traitement..."
+            : isPaid
+            ? "Déjà payé"
+            : isFailed
+            ? "Déjà refusé"
+            : "Choisir action"}
+        </option>
+
+        {!isPaid && !isFailed && (
+          <>
+            <option value="validate">Valider paiement</option>
+            <option value="reject">Refuser paiement</option>
+          </>
+        )}
+      </select>
+
+      <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#1B4F59]">
+        ▾
+      </span>
+    </div>
+  );
+}
+
 function Pagination({
   currentPage,
   totalPages,
@@ -602,83 +890,45 @@ function Pagination({
 }) {
   return (
     <div className="mt-6 flex flex-col gap-4 rounded-[24px] border border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-      <p className="text-sm font-bold text-slate-500">
-        Navigation des pages
-      </p>
+      <p className="text-sm font-bold text-slate-500">Navigation des pages</p>
 
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           disabled={currentPage <= 1}
           onClick={() => onPageChange(currentPage - 1)}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:bg-teal-50 hover:text-[#1B4F59] disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:bg-teal-50 hover:text-[#1B4F59] disabled:opacity-50"
         >
           <ChevronLeft size={17} />
           Précédent
         </button>
 
-        {visiblePages[0] > 1 && (
-          <>
-            <PageButton page={1} active={currentPage === 1} onClick={onPageChange} />
-            <span className="px-2 text-sm font-black text-slate-400">...</span>
-          </>
-        )}
-
         {visiblePages.map((page) => (
-          <PageButton
+          <button
             key={page}
-            page={page}
-            active={currentPage === page}
-            onClick={onPageChange}
-          />
+            type="button"
+            onClick={() => onPageChange(page)}
+            className={`h-11 min-w-11 rounded-2xl px-4 text-sm font-black transition ${
+              currentPage === page
+                ? "bg-[#1B4F59] text-white shadow-lg"
+                : "border border-slate-200 bg-white text-slate-700 hover:bg-teal-50 hover:text-[#1B4F59]"
+            }`}
+          >
+            {page}
+          </button>
         ))}
-
-        {visiblePages[visiblePages.length - 1] < totalPages && (
-          <>
-            <span className="px-2 text-sm font-black text-slate-400">...</span>
-            <PageButton
-              page={totalPages}
-              active={currentPage === totalPages}
-              onClick={onPageChange}
-            />
-          </>
-        )}
 
         <button
           type="button"
           disabled={currentPage >= totalPages}
           onClick={() => onPageChange(currentPage + 1)}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:bg-teal-50 hover:text-[#1B4F59] disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:bg-teal-50 hover:text-[#1B4F59] disabled:opacity-50"
         >
           Suivant
           <ChevronRight size={17} />
         </button>
       </div>
     </div>
-  );
-}
-
-function PageButton({
-  page,
-  active,
-  onClick,
-}: {
-  page: number;
-  active: boolean;
-  onClick: (page: number) => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onClick(page)}
-      className={`h-11 min-w-11 rounded-2xl px-4 text-sm font-black transition ${
-        active
-          ? "bg-[#1B4F59] text-white shadow-lg shadow-teal-900/15"
-          : "border border-slate-200 bg-white text-slate-700 hover:bg-teal-50 hover:text-[#1B4F59]"
-      }`}
-    >
-      {page}
-    </button>
   );
 }
 
@@ -738,148 +988,16 @@ function StatBox({
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.5 }}
-      className="rounded-[28px] border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200/60 backdrop-blur"
+      className="rounded-[28px] border border-slate-100 bg-white/95 p-6 shadow-xl shadow-slate-200/60"
     >
       <div className={`mb-5 inline-flex rounded-2xl p-4 ${iconClass}`}>
         {icon}
       </div>
 
       <p className="text-sm font-bold text-slate-500">{label}</p>
-
       <div className="mt-2 text-2xl font-black text-slate-950">{value}</div>
-
       <p className="mt-2 text-sm font-semibold text-slate-400">{helper}</p>
     </motion.div>
-  );
-}
-
-function SearchInput({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-}) {
-  return (
-    <div>
-      <label className="mb-2 block text-sm font-bold text-slate-700">
-        Recherche
-      </label>
-
-      <div className="relative">
-        <Search
-          size={18}
-          className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-        />
-
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-12 pr-4 text-sm font-semibold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-[#1B4F59] focus:bg-white focus:ring-4 focus:ring-teal-100"
-        />
-      </div>
-    </div>
-  );
-}
-
-function FilterSelect({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div>
-      <label className="mb-2 block text-sm font-bold text-slate-700">
-        Statut
-      </label>
-
-      <div className="relative">
-        <Filter
-          size={18}
-          className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-        />
-
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="h-14 w-full appearance-none rounded-2xl border border-slate-200 bg-slate-50 pl-12 pr-10 text-sm font-black text-slate-800 outline-none transition focus:border-[#1B4F59] focus:bg-white focus:ring-4 focus:ring-teal-100"
-        >
-          <option value="all">Tous</option>
-          <option value="pending">En attente</option>
-          <option value="paid">Payés</option>
-          <option value="failed">Refusés</option>
-        </select>
-
-        <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
-          ▾
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function ActionSelect({
-  payment,
-  loadingId,
-  onAction,
-}: {
-  payment: any;
-  loadingId: number | string | null;
-  onAction: (actionValue: string, payment: any) => void;
-}) {
-  const isLoading = loadingId === payment.id;
-  const isPaid = payment.status === "paid";
-  const isFailed =
-    payment.status === "failed" || payment.status === "rejected";
-
-  return (
-    <div className="relative ml-auto w-[220px]">
-      {isLoading ? (
-        <Loader2
-          size={17}
-          className="absolute left-4 top-1/2 z-10 -translate-y-1/2 animate-spin text-[#1B4F59]"
-        />
-      ) : (
-        <CheckCircle2
-          size={17}
-          className="absolute left-4 top-1/2 z-10 -translate-y-1/2 text-[#1B4F59]"
-        />
-      )}
-
-      <select
-        value=""
-        disabled={isLoading || isPaid || isFailed}
-        onChange={(e) => onAction(e.target.value, payment)}
-        className="h-12 w-full appearance-none rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-10 text-sm font-black text-[#1B4F59] outline-none transition hover:bg-white focus:border-[#1B4F59] focus:bg-white focus:ring-4 focus:ring-teal-100 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        <option value="">
-          {isLoading
-            ? "Traitement..."
-            : isPaid
-            ? "Déjà payé"
-            : isFailed
-            ? "Déjà refusé"
-            : "Choisir action"}
-        </option>
-
-        {!isPaid && !isFailed && (
-          <>
-            <option value="validate">Valider paiement</option>
-            <option value="reject">Refuser paiement</option>
-          </>
-        )}
-      </select>
-
-      <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#1B4F59]">
-        ▾
-      </span>
-    </div>
   );
 }
 
@@ -971,7 +1089,7 @@ function EmptyState() {
         </h3>
 
         <p className="mx-auto mt-2 max-w-md leading-7 text-slate-500">
-          Aucun paiement ne correspond au filtre ou à la recherche actuelle.
+          Aucun paiement ne correspond au filtre actuel.
         </p>
       </div>
     </div>

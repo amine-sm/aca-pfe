@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -34,6 +34,48 @@ import {
   getMyRecommendations,
   rejectRecommendation,
 } from "@/lib/recommendationsApi";
+
+function getUniqueRecommendations(list: any[]) {
+  const map = new Map<string, any>();
+
+  list.forEach((item) => {
+    const key = String(
+      item?.psychologist_id ||
+        item?.psychologistId ||
+        item?.psychologist_user_id ||
+        item?.full_name ||
+        item?.recommendation_id ||
+        item?.id ||
+        ""
+    );
+
+    if (!key) return;
+
+    const oldItem = map.get(key);
+
+    if (!oldItem) {
+      map.set(key, item);
+      return;
+    }
+
+    const oldScore = Number(oldItem?.recommendation_score || 0);
+    const newScore = Number(item?.recommendation_score || 0);
+
+    const oldStatus = String(oldItem?.status || "");
+    const newStatus = String(item?.status || "");
+
+    if (newStatus === "accepted") {
+      map.set(key, item);
+      return;
+    }
+
+    if (oldStatus !== "accepted" && newScore > oldScore) {
+      map.set(key, item);
+    }
+  });
+
+  return Array.from(map.values());
+}
 
 export default function RecommendationsPage() {
   const router = useRouter();
@@ -133,15 +175,19 @@ export default function RecommendationsPage() {
     }
   }, [authLoading]);
 
-  const acceptedCount = recommendations.filter(
+  const uniqueRecommendations = useMemo(() => {
+    return getUniqueRecommendations(recommendations);
+  }, [recommendations]);
+
+  const acceptedCount = uniqueRecommendations.filter(
     (item) => item.status === "accepted"
   ).length;
 
-  const suggestedCount = recommendations.filter(
+  const suggestedCount = uniqueRecommendations.filter(
     (item) => item.status === "suggested"
   ).length;
 
-  const rejectedCount = recommendations.filter(
+  const rejectedCount = uniqueRecommendations.filter(
     (item) => item.status === "rejected"
   ).length;
 
@@ -251,7 +297,7 @@ export default function RecommendationsPage() {
           <StatBox
             icon={<Stethoscope size={24} />}
             label="Recommandations"
-            value={recommendations.length}
+            value={uniqueRecommendations.length}
             delay={0.1}
           />
 
@@ -362,18 +408,18 @@ export default function RecommendationsPage() {
             </div>
           )}
 
-          {!loading && recommendations.length === 0 && (
+          {!loading && uniqueRecommendations.length === 0 && (
             <EmptyRecommendationState
               generating={generating}
               onGenerate={handleGenerate}
             />
           )}
 
-          {!loading && recommendations.length > 0 && (
+          {!loading && uniqueRecommendations.length > 0 && (
             <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-              {recommendations.map((item, index) => (
+              {uniqueRecommendations.map((item, index) => (
                 <RecommendationCard
-                  key={item.recommendation_id || item.psychologist_id || index}
+                  key={item.psychologist_id || item.psychologistId || item.recommendation_id || item.id || index}
                   item={item}
                   index={index}
                   actionLoadingId={actionLoadingId}

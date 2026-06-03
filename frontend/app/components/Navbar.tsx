@@ -16,6 +16,7 @@ import {
   UsersRound,
   Bell,
   CreditCard,
+  Banknote,
   Home,
   ListChecks,
   Target,
@@ -57,7 +58,6 @@ export function Navbar() {
       <nav className="fixed left-0 top-0 z-50 w-full border-b border-slate-200/70 bg-white/85 shadow-sm backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/85 dark:shadow-slate-950/40">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-20 items-center justify-between">
-            {/* Logo */}
             <Link href="/" className="group flex items-center gap-3">
               <motion.div
                 whileHover={{ scale: 1.06, rotate: 4 }}
@@ -77,7 +77,6 @@ export function Navbar() {
               </div>
             </Link>
 
-            {/* Desktop Navigation */}
             <div className="hidden items-center gap-2 lg:flex">
               <motion.div
                 initial="hidden"
@@ -144,7 +143,6 @@ export function Navbar() {
                       Soutien
                     </NavLink>
 
-                    {/* ✨ NOUVEAU : Mes tâches */}
                     <NavLink
                       href="/tasks"
                       icon={<Target size={16} />}
@@ -194,7 +192,6 @@ export function Navbar() {
                       Patients suivis
                     </NavLink>
 
-                    {/* ✨ NOUVEAU : Gérer les tâches */}
                     <NavLink
                       href="/psychologist/tasks"
                       icon={<ListChecks size={16} />}
@@ -236,17 +233,25 @@ export function Navbar() {
                     </NavLink>
 
                     <NavLink
+                      href="/admin/payment-methods"
+                      icon={<Banknote size={16} />}
+                      variants={navLinkVariants}
+                      custom={4}
+                    >
+                      Méthodes paiement
+                    </NavLink>
+
+                    <NavLink
                       href="/admin/alerts"
                       icon={<Bell size={16} />}
                       variants={navLinkVariants}
-                      custom={4}
+                      custom={5}
                     >
                       Alertes
                     </NavLink>
                   </>
                 )}
               </motion.div>
-
 
               {isLoggedIn && (
                 <motion.button
@@ -261,7 +266,6 @@ export function Navbar() {
               )}
             </div>
 
-            {/* Mobile Button menu */}
             <div className="flex items-center gap-2 lg:hidden">
               <button
                 onClick={toggleMobileMenu}
@@ -275,7 +279,6 @@ export function Navbar() {
         </div>
       </nav>
 
-      {/* Mobile Overlay */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <>
@@ -386,7 +389,6 @@ export function Navbar() {
                         Soutien
                       </MobileNavLink>
 
-                      {/* ✨ NOUVEAU */}
                       <MobileNavLink
                         href="/tasks"
                         icon={<Target size={18} />}
@@ -433,7 +435,6 @@ export function Navbar() {
                         Patients suivis
                       </MobileNavLink>
 
-                      {/* ✨ NOUVEAU */}
                       <MobileNavLink
                         href="/psychologist/tasks"
                         icon={<ListChecks size={18} />}
@@ -471,6 +472,14 @@ export function Navbar() {
                           onClick={closeMobileMenu}
                         >
                           Paiements
+                        </MobileNavLink>
+
+                        <MobileNavLink
+                          href="/admin/payment-methods"
+                          icon={<Banknote size={18} />}
+                          onClick={closeMobileMenu}
+                        >
+                          Méthodes paiement
                         </MobileNavLink>
 
                         <MobileNavLink
