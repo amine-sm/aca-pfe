@@ -1,23 +1,24 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
+  Activity,
+  ArrowRight,
+  BadgeCheck,
   Brain,
   CalendarCheck,
-  MessageCircle,
-  ShieldCheck,
-  Stethoscope,
-  Sparkles,
-  ArrowRight,
-  Activity,
   CheckCircle2,
   ClipboardList,
-  HeartPulse,
-  UserCheck,
-  Lock,
   HandHeart,
-  BadgeCheck,
+  HeartPulse,
+  Lock,
+  MessageCircle,
+  ShieldCheck,
+  Sparkles,
+  Stethoscope,
+  UserCheck,
 } from "lucide-react";
 
 const fadeUp = {
@@ -25,9 +26,11 @@ const fadeUp = {
     opacity: 0,
     y: 28,
   },
+
   visible: {
     opacity: 1,
     y: 0,
+
     transition: {
       duration: 0.65,
       ease: [0.22, 1, 0.36, 1],
@@ -37,6 +40,7 @@ const fadeUp = {
 
 const stagger = {
   hidden: {},
+
   visible: {
     transition: {
       staggerChildren: 0.12,
@@ -50,10 +54,12 @@ const cardMotion = {
     y: 26,
     scale: 0.98,
   },
+
   visible: {
     opacity: 1,
     y: 0,
     scale: 1,
+
     transition: {
       duration: 0.55,
       ease: [0.22, 1, 0.36, 1],
@@ -100,10 +106,12 @@ const steps = [
 export default function HomePage() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#F7FAFB] text-slate-900">
-      {/* Background professionnel */}
+      {/* ARRIÈRE-PLAN */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -top-40 left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-teal-200/30 blur-3xl" />
+
         <div className="absolute right-[-180px] top-40 h-[460px] w-[460px] rounded-full bg-cyan-200/30 blur-3xl" />
+
         <div className="absolute bottom-[-220px] left-[-160px] h-[520px] w-[520px] rounded-full bg-emerald-200/30 blur-3xl" />
 
         <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(15,23,42,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.05)_1px,transparent_1px)] bg-[size:64px_64px] opacity-30" />
@@ -112,13 +120,49 @@ export default function HomePage() {
       <div className="relative z-10 mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-16">
         {/* HERO */}
         <section className="grid min-h-[640px] items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-          {/* LEFT */}
+          {/* PARTIE GAUCHE */}
           <motion.div
             variants={stagger}
             initial="hidden"
             animate="visible"
             className="max-w-3xl"
           >
+            {/* LOGO EL MOUSANID AI */}
+            <motion.div
+              variants={fadeUp}
+              className="mb-7 flex items-center gap-4"
+            >
+              <motion.div
+                whileHover={{
+                  scale: 1.06,
+                  rotate: 2,
+                }}
+                whileTap={{
+                  scale: 0.96,
+                }}
+                className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[24px] border border-slate-200 bg-white p-2 shadow-xl shadow-teal-900/10"
+              >
+                <Image
+                  src="/logo.png"
+                  alt="Logo EL MOUSANID AI"
+                  width={80}
+                  height={80}
+                  priority
+                  className="h-full w-full object-contain"
+                />
+              </motion.div>
+
+              <div className="leading-tight">
+                <p className="text-2xl font-black tracking-tight text-[#1B4F59] sm:text-3xl">
+                  EL MOUSANID AI
+                </p>
+
+                <p className="mt-1 text-sm font-semibold text-slate-500">
+                  Accompagnement intelligent et humain
+                </p>
+              </div>
+            </motion.div>
+
             <motion.div
               variants={fadeUp}
               className="inline-flex items-center gap-2 rounded-full border border-teal-200/70 bg-white/80 px-4 py-2 text-sm font-semibold text-teal-800 shadow-sm backdrop-blur"
@@ -136,10 +180,19 @@ export default function HomePage() {
                 <span className="bg-gradient-to-r from-[#1B4F59] via-teal-600 to-cyan-600 bg-clip-text text-transparent">
                   confidentiel
                 </span>
+
                 <motion.span
-                  initial={{ scaleX: 0 }}
-                  animate={{ scaleX: 1 }}
-                  transition={{ delay: 0.9, duration: 0.8, ease: "easeOut" }}
+                  initial={{
+                    scaleX: 0,
+                  }}
+                  animate={{
+                    scaleX: 1,
+                  }}
+                  transition={{
+                    delay: 0.9,
+                    duration: 0.8,
+                    ease: "easeOut",
+                  }}
                   className="absolute -bottom-2 left-0 h-3 w-full origin-left rounded-full bg-teal-200/70"
                 />
               </span>{" "}
@@ -150,9 +203,10 @@ export default function HomePage() {
               variants={fadeUp}
               className="mt-7 max-w-2xl text-lg leading-8 text-slate-600 sm:text-xl"
             >
-              ACA accompagne les personnes concernées par l’addiction à travers
-              un questionnaire guidé, une orientation personnalisée, des
-              recommandations adaptées et un suivi avec des psychologues.
+              EL MOUSANID AI accompagne les personnes concernées par
+              l’addiction à travers un questionnaire guidé, une orientation
+              personnalisée, des recommandations adaptées et un suivi avec des
+              psychologues.
             </motion.p>
 
             <motion.div
@@ -165,6 +219,7 @@ export default function HomePage() {
               >
                 <MessageCircle size={18} />
                 Commencer le parcours
+
                 <ArrowRight
                   size={17}
                   className="transition group-hover:translate-x-1"
@@ -185,21 +240,30 @@ export default function HomePage() {
               className="mt-10 grid max-w-xl grid-cols-1 gap-3 sm:grid-cols-3"
             >
               <div className="rounded-2xl border border-slate-100 bg-white/80 p-4 shadow-sm backdrop-blur">
-                <p className="text-2xl font-black text-[#1B4F59]">Privé</p>
+                <p className="text-2xl font-black text-[#1B4F59]">
+                  Privé
+                </p>
+
                 <p className="mt-1 text-xs font-semibold text-slate-500">
                   Données protégées
                 </p>
               </div>
 
               <div className="rounded-2xl border border-slate-100 bg-white/80 p-4 shadow-sm backdrop-blur">
-                <p className="text-2xl font-black text-[#1B4F59]">Guidé</p>
+                <p className="text-2xl font-black text-[#1B4F59]">
+                  Guidé
+                </p>
+
                 <p className="mt-1 text-xs font-semibold text-slate-500">
                   Parcours clair
                 </p>
               </div>
 
               <div className="rounded-2xl border border-slate-100 bg-white/80 p-4 shadow-sm backdrop-blur">
-                <p className="text-2xl font-black text-[#1B4F59]">Humain</p>
+                <p className="text-2xl font-black text-[#1B4F59]">
+                  Humain
+                </p>
+
                 <p className="mt-1 text-xs font-semibold text-slate-500">
                   Suivi spécialisé
                 </p>
@@ -207,15 +271,28 @@ export default function HomePage() {
             </motion.div>
           </motion.div>
 
-          {/* RIGHT DASHBOARD PATIENT */}
+          {/* PARTIE DROITE : TABLEAU DE BORD PATIENT */}
           <motion.div
-            initial={{ opacity: 0, x: 40, scale: 0.96 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            initial={{
+              opacity: 0,
+              x: 40,
+              scale: 0.96,
+            }}
+            animate={{
+              opacity: 1,
+              x: 0,
+              scale: 1,
+            }}
+            transition={{
+              duration: 0.8,
+              ease: [0.22, 1, 0.36, 1],
+            }}
             className="relative"
           >
             <motion.div
-              animate={{ y: [0, -10, 0] }}
+              animate={{
+                y: [0, -10, 0],
+              }}
               transition={{
                 duration: 6,
                 repeat: Infinity,
@@ -224,7 +301,9 @@ export default function HomePage() {
               className="relative overflow-hidden rounded-[34px] border border-white/50 bg-slate-950 p-5 shadow-2xl shadow-slate-900/25"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-[#1B4F59]/80 via-slate-950 to-cyan-950" />
+
               <div className="absolute right-[-90px] top-[-90px] h-72 w-72 rounded-full bg-cyan-400/20 blur-3xl" />
+
               <div className="absolute bottom-[-100px] left-[-100px] h-72 w-72 rounded-full bg-teal-400/20 blur-3xl" />
 
               <div className="relative z-10 rounded-[28px] border border-white/10 bg-white/10 p-5 backdrop-blur-xl">
@@ -233,6 +312,7 @@ export default function HomePage() {
                     <p className="text-sm font-semibold text-teal-100">
                       Espace patient
                     </p>
+
                     <h2 className="mt-1 text-2xl font-black text-white">
                       Suivi du parcours
                     </h2>
@@ -254,15 +334,25 @@ export default function HomePage() {
                         <p className="text-xs font-semibold text-white/55">
                           Bien-être actuel
                         </p>
-                        <p className="text-2xl font-black text-white">Bon</p>
+
+                        <p className="text-2xl font-black text-white">
+                          Bon
+                        </p>
                       </div>
                     </div>
 
                     <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
                       <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: "78%" }}
-                        transition={{ delay: 0.7, duration: 1 }}
+                        initial={{
+                          width: 0,
+                        }}
+                        animate={{
+                          width: "78%",
+                        }}
+                        transition={{
+                          delay: 0.7,
+                          duration: 1,
+                        }}
                         className="h-full rounded-full bg-cyan-300"
                       />
                     </div>
@@ -278,15 +368,25 @@ export default function HomePage() {
                         <p className="text-xs font-semibold text-white/55">
                           Niveau d’urgence
                         </p>
-                        <p className="text-2xl font-black text-white">Faible</p>
+
+                        <p className="text-2xl font-black text-white">
+                          Faible
+                        </p>
                       </div>
                     </div>
 
                     <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
                       <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: "36%" }}
-                        transition={{ delay: 0.85, duration: 1 }}
+                        initial={{
+                          width: 0,
+                        }}
+                        animate={{
+                          width: "36%",
+                        }}
+                        transition={{
+                          delay: 0.85,
+                          duration: 1,
+                        }}
                         className="h-full rounded-full bg-emerald-300"
                       />
                     </div>
@@ -299,12 +399,16 @@ export default function HomePage() {
                       <p className="text-xs font-semibold text-white/55">
                         Prochaine étape
                       </p>
+
                       <p className="mt-1 text-lg font-bold text-white">
                         Prendre rendez-vous avec un psychologue
                       </p>
                     </div>
 
-                    <CalendarCheck className="text-teal-100" size={26} />
+                    <CalendarCheck
+                      className="text-teal-100"
+                      size={26}
+                    />
                   </div>
 
                   <div className="mt-5 grid grid-cols-3 gap-3">
@@ -312,17 +416,30 @@ export default function HomePage() {
                       <p className="text-sm font-black text-white">
                         Question.
                       </p>
-                      <p className="mt-1 text-xs text-white/50">Terminé</p>
+
+                      <p className="mt-1 text-xs text-white/50">
+                        Terminé
+                      </p>
                     </div>
 
                     <div className="rounded-2xl bg-white/10 p-3 text-center">
-                      <p className="text-sm font-black text-white">Suivi</p>
-                      <p className="mt-1 text-xs text-white/50">En cours</p>
+                      <p className="text-sm font-black text-white">
+                        Suivi
+                      </p>
+
+                      <p className="mt-1 text-xs text-white/50">
+                        En cours
+                      </p>
                     </div>
 
                     <div className="rounded-2xl bg-white/10 p-3 text-center">
-                      <p className="text-sm font-black text-white">Séance</p>
-                      <p className="mt-1 text-xs text-white/50">À planifier</p>
+                      <p className="text-sm font-black text-white">
+                        Séance
+                      </p>
+
+                      <p className="mt-1 text-xs text-white/50">
+                        À planifier
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -335,12 +452,24 @@ export default function HomePage() {
                   ].map((item, index) => (
                     <motion.div
                       key={item}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 1 + index * 0.15 }}
+                      initial={{
+                        opacity: 0,
+                        x: 20,
+                      }}
+                      animate={{
+                        opacity: 1,
+                        x: 0,
+                      }}
+                      transition={{
+                        delay: 1 + index * 0.15,
+                      }}
                       className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-4 py-3"
                     >
-                      <CheckCircle2 size={18} className="text-emerald-300" />
+                      <CheckCircle2
+                        size={18}
+                        className="text-emerald-300"
+                      />
+
                       <span className="text-sm font-semibold text-white/85">
                         {item}
                       </span>
@@ -351,7 +480,9 @@ export default function HomePage() {
             </motion.div>
 
             <motion.div
-              animate={{ y: [0, 12, 0] }}
+              animate={{
+                y: [0, 12, 0],
+              }}
               transition={{
                 duration: 5,
                 repeat: Infinity,
@@ -368,6 +499,7 @@ export default function HomePage() {
                   <p className="text-sm font-black text-slate-900">
                     Confidentialité
                   </p>
+
                   <p className="text-xs font-semibold text-slate-500">
                     Espace sécurisé
                   </p>
@@ -377,12 +509,15 @@ export default function HomePage() {
           </motion.div>
         </section>
 
-        {/* FEATURES */}
+        {/* FONCTIONNALITÉS */}
         <motion.section
           variants={stagger}
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, amount: 0.2 }}
+          viewport={{
+            once: true,
+            amount: 0.2,
+          }}
           className="mt-12 grid gap-6 md:grid-cols-3"
         >
           {features.map((feature) => {
@@ -394,7 +529,10 @@ export default function HomePage() {
                 variants={cardMotion}
                 whileHover={{
                   y: -8,
-                  transition: { duration: 0.25 },
+
+                  transition: {
+                    duration: 0.25,
+                  },
                 }}
                 className="group rounded-[30px] border border-slate-100 bg-white p-7 shadow-xl shadow-slate-200/60 transition"
               >
@@ -412,6 +550,7 @@ export default function HomePage() {
 
                 <div className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#1B4F59]">
                   Découvrir
+
                   <ArrowRight
                     size={16}
                     className="transition group-hover:translate-x-1"
@@ -422,7 +561,7 @@ export default function HomePage() {
           })}
         </motion.section>
 
-        {/* PROCESS */}
+        {/* PARCOURS PATIENT */}
         <section className="mt-20 rounded-[34px] border border-slate-100 bg-white p-6 shadow-2xl shadow-slate-200/60 md:p-10">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
@@ -436,8 +575,8 @@ export default function HomePage() {
             </div>
 
             <p className="max-w-xl leading-7 text-slate-500">
-              ACA aide le patient à avancer étape par étape, sans jugement, avec
-              un suivi clair et un accompagnement humain.
+              EL MOUSANID AI aide le patient à avancer étape par étape,
+              sans jugement, avec un suivi clair et un accompagnement humain.
             </p>
           </div>
 
@@ -445,7 +584,10 @@ export default function HomePage() {
             variants={stagger}
             initial="hidden"
             whileInView="visible"
-            viewport={{ once: true, amount: 0.2 }}
+            viewport={{
+              once: true,
+              amount: 0.2,
+            }}
             className="mt-10 grid gap-5 md:grid-cols-3"
           >
             {steps.map((step, index) => {
@@ -480,18 +622,20 @@ export default function HomePage() {
           </motion.div>
         </section>
 
-        {/* CONFIDENTIALITY SECTION */}
+        {/* CONFIDENTIALITÉ */}
         <section className="mt-20 grid gap-6 lg:grid-cols-3">
           <div className="rounded-[30px] border border-slate-100 bg-white p-7 shadow-xl shadow-slate-200/60">
             <div className="mb-5 inline-flex rounded-2xl bg-teal-50 p-4 text-[#1B4F59]">
               <Lock size={30} />
             </div>
+
             <h3 className="text-xl font-black text-slate-950">
               Confidentialité
             </h3>
+
             <p className="mt-3 leading-7 text-slate-500">
-              Le patient bénéficie d’un espace discret et sécurisé pour avancer
-              dans son parcours.
+              Le patient bénéficie d’un espace discret et sécurisé pour
+              avancer dans son parcours.
             </p>
           </div>
 
@@ -499,12 +643,14 @@ export default function HomePage() {
             <div className="mb-5 inline-flex rounded-2xl bg-teal-50 p-4 text-[#1B4F59]">
               <HandHeart size={30} />
             </div>
+
             <h3 className="text-xl font-black text-slate-950">
               Sans jugement
             </h3>
+
             <p className="mt-3 leading-7 text-slate-500">
-              L’objectif est d’aider, d’écouter et d’orienter la personne vers
-              un soutien adapté.
+              L’objectif est d’aider, d’écouter et d’orienter la personne
+              vers un soutien adapté.
             </p>
           </div>
 
@@ -512,28 +658,54 @@ export default function HomePage() {
             <div className="mb-5 inline-flex rounded-2xl bg-teal-50 p-4 text-[#1B4F59]">
               <BadgeCheck size={30} />
             </div>
+
             <h3 className="text-xl font-black text-slate-950">
               Suivi structuré
             </h3>
+
             <p className="mt-3 leading-7 text-slate-500">
-              Chaque étape du parcours est organisée pour faciliter la prise en
-              charge et le suivi.
+              Chaque étape du parcours est organisée pour faciliter la prise
+              en charge et le suivi.
             </p>
           </div>
         </section>
 
-        {/* CTA */}
+        {/* APPEL À L’ACTION */}
         <motion.section
-          initial={{ opacity: 0, y: 32 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+          initial={{
+            opacity: 0,
+            y: 32,
+          }}
+          whileInView={{
+            opacity: 1,
+            y: 0,
+          }}
+          viewport={{
+            once: true,
+          }}
+          transition={{
+            duration: 0.65,
+            ease: [0.22, 1, 0.36, 1],
+          }}
           className="mt-20 overflow-hidden rounded-[34px] bg-[#1B4F59] p-8 text-center shadow-2xl shadow-teal-900/20 md:p-12"
         >
           <div className="mx-auto max-w-3xl">
-            <div className="mx-auto mb-6 inline-flex rounded-3xl bg-white/10 p-4 text-white">
-              <HeartPulse size={36} />
-            </div>
+            {/* LOGO DANS LA SECTION FINALE */}
+            <motion.div
+              whileHover={{
+                scale: 1.06,
+                rotate: 2,
+              }}
+              className="mx-auto mb-6 flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] border border-white/20 bg-white p-2 shadow-xl"
+            >
+              <Image
+                src="/logo.png"
+                alt="Logo EL MOUSANID AI"
+                width={96}
+                height={96}
+                className="h-full w-full object-contain"
+              />
+            </motion.div>
 
             <h2 className="text-3xl font-black tracking-tight text-white md:text-5xl">
               Commencez votre accompagnement dès aujourd’hui
@@ -551,6 +723,7 @@ export default function HomePage() {
               >
                 <MessageCircle size={18} />
                 Commencer maintenant
+
                 <ArrowRight
                   size={17}
                   className="transition group-hover:translate-x-1"

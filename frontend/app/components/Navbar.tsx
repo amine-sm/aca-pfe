@@ -1,578 +1,735 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { usePathname } from "next/navigation";
 import {
-  HeartPulse,
-  LogOut,
-  Menu,
-  X,
-  ShieldCheck,
-  UserRound,
-  ClipboardList,
-  CalendarCheck,
-  HandHeart,
-  UsersRound,
-  Bell,
-  CreditCard,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
   Banknote,
+  Bell,
+  CalendarCheck,
+  ChevronDown,
+  ClipboardList,
+  CreditCard,
+  HandHeart,
   Home,
   ListChecks,
+  LogIn,
+  LogOut,
+  Menu,
+  ShieldCheck,
   Target,
+  UserPlus,
+  UserRound,
+  UsersRound,
+  X,
 } from "lucide-react";
+
 import { useAuth } from "./AuthProvider";
 
+type NavItem = {
+  href: string;
+  label: string;
+  icon: ReactNode;
+};
+
 export function Navbar() {
+  const pathname = usePathname();
   const { isLoggedIn, role, logout } = useAuth();
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
-  const closeMobileMenu = () => setIsMobileMenuOpen(false);
-  const toggleMobileMenu = () => setIsMobileMenuOpen((prev) => !prev);
+  const moreMenuRef = useRef<HTMLDivElement | null>(null);
 
-  const navLinkVariants = {
-    hidden: { opacity: 0, y: -8 },
-    visible: (i: number) => ({
-      opacity: 1,
-      y: 0,
-      transition: {
-        delay: i * 0.04,
-        duration: 0.25,
-      },
-    }),
+  const homeItem: NavItem = {
+    href: "/",
+    label: "Accueil",
+    icon: <Home size={17} />,
   };
 
-  const mobileMenuVariants = {
-    closed: {
-      opacity: 0,
-      x: "100%",
-    },
-    open: {
-      opacity: 1,
-      x: 0,
-    },
+  const { principalItems, secondaryItems, sectionTitle } = useMemo(() => {
+    if (!isLoggedIn) {
+      return {
+        principalItems: [
+          homeItem,
+          {
+            href: "/register",
+            label: "Créer un compte",
+            icon: <UserPlus size={17} />,
+          },
+          {
+            href: "/login",
+            label: "Connexion",
+            icon: <LogIn size={17} />,
+          },
+        ] satisfies NavItem[],
+
+        secondaryItems: [] satisfies NavItem[],
+
+        sectionTitle: "Navigation",
+      };
+    }
+
+    if (role === "USER") {
+      return {
+        principalItems: [
+          homeItem,
+          {
+            href: "/dashboard",
+            label: "Mon espace",
+            icon: <UserRound size={17} />,
+          },
+          {
+            href: "/questionnaire",
+            label: "Analyse rapide",
+            icon: <ClipboardList size={17} />,
+          },
+          {
+            href: "/chat",
+            label: "Soutien",
+            icon: <HandHeart size={17} />,
+          },
+        ] satisfies NavItem[],
+
+        secondaryItems: [
+          {
+            href: "/tasks",
+            label: "Mes tâches",
+            icon: <Target size={17} />,
+          },
+          {
+            href: "/recommendations",
+            label: "Orientation",
+            icon: <ShieldCheck size={17} />,
+          },
+          {
+            href: "/appointments",
+            label: "Rendez-vous",
+            icon: <CalendarCheck size={17} />,
+          },
+        ] satisfies NavItem[],
+
+        sectionTitle: "Mon parcours",
+      };
+    }
+
+    if (role === "PSYCHOLOGIST") {
+      return {
+        principalItems: [
+          homeItem,
+          {
+            href: "/psychologist",
+            label: "Espace psychologue",
+            icon: <UserRound size={17} />,
+          },
+          {
+            href: "/psychologist/patients",
+            label: "Patients suivis",
+            icon: <UsersRound size={17} />,
+          },
+          {
+            href: "/psychologist/tasks",
+            label: "Tâches",
+            icon: <ListChecks size={17} />,
+          },
+        ] satisfies NavItem[],
+
+        secondaryItems: [] satisfies NavItem[],
+
+        sectionTitle: "Suivi professionnel",
+      };
+    }
+
+    if (role === "ADMIN" || role === "SUPER_ADMIN") {
+      return {
+        principalItems: [
+          homeItem,
+          {
+            href: "/admin",
+            label: "Administration",
+            icon: <ShieldCheck size={17} />,
+          },
+          {
+            href: "/admin/psychologists",
+            label: "Psychologues",
+            icon: <UsersRound size={17} />,
+          },
+          {
+            href: "/admin/payments",
+            label: "Paiements",
+            icon: <CreditCard size={17} />,
+          },
+        ] satisfies NavItem[],
+
+        secondaryItems: [
+          {
+            href: "/admin/payment-methods",
+            label: "Méthodes de paiement",
+            icon: <Banknote size={17} />,
+          },
+          {
+            href: "/admin/alerts",
+            label: "Alertes",
+            icon: <Bell size={17} />,
+          },
+        ] satisfies NavItem[],
+
+        sectionTitle: "Administration",
+      };
+    }
+
+    return {
+      principalItems: [homeItem],
+      secondaryItems: [],
+      sectionTitle: "Navigation",
+    };
+  }, [isLoggedIn, role]);
+
+  const allItems = useMemo(
+    () => [...principalItems, ...secondaryItems],
+    [principalItems, secondaryItems],
+  );
+
+  const activeHref = useMemo(() => {
+    const sortedItems = [...allItems].sort(
+      (firstItem, secondItem) =>
+        secondItem.href.length - firstItem.href.length,
+    );
+
+    const matchedItem = sortedItems.find((item) => {
+      if (item.href === "/") {
+        return pathname === "/";
+      }
+
+      return (
+        pathname === item.href ||
+        pathname.startsWith(`${item.href}/`)
+      );
+    });
+
+    return matchedItem?.href ?? "";
+  }, [allItems, pathname]);
+
+  const hasActiveSecondaryItem = secondaryItems.some(
+    (item) => item.href === activeHref,
+  );
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
   };
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen((currentValue) => !currentValue);
+  };
+
+  const handleLogout = () => {
+    setIsMobileMenuOpen(false);
+    setIsMoreMenuOpen(false);
+    logout();
+  };
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+    setIsMoreMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    const closeMoreMenuOnOutsideClick = (event: MouseEvent) => {
+      if (
+        moreMenuRef.current &&
+        !moreMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsMoreMenuOpen(false);
+      }
+    };
+
+    document.addEventListener(
+      "mousedown",
+      closeMoreMenuOnOutsideClick,
+    );
+
+    return () => {
+      document.removeEventListener(
+        "mousedown",
+        closeMoreMenuOnOutsideClick,
+      );
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileMenuOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMobileMenuOpen]);
 
   return (
     <>
-      <nav className="fixed left-0 top-0 z-50 w-full border-b border-slate-200/70 bg-white/85 shadow-sm backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/85 dark:shadow-slate-950/40">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-20 items-center justify-between">
-            <Link href="/" className="group flex items-center gap-3">
-              <motion.div
-                whileHover={{ scale: 1.06, rotate: 4 }}
-                whileTap={{ scale: 0.96 }}
-                className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1B4F59] text-white shadow-lg shadow-teal-900/20 dark:bg-teal-500 dark:shadow-teal-500/20"
-              >
-                <HeartPulse size={25} />
-              </motion.div>
+      <nav className="fixed inset-x-0 top-0 z-50 border-b border-slate-200/80 bg-white/90 shadow-[0_4px_24px_rgba(15,23,42,0.05)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/90">
+        <div className="relative mx-auto flex h-[76px] max-w-[1500px] items-center gap-5 px-4 sm:px-6 lg:px-8">
+          {/* LOGO ET NOM */}
+          <Link
+            href="/"
+            aria-label="Accueil EL MOUSANID AI"
+            className="group flex shrink-0 items-center gap-3"
+          >
+            <motion.div
+              whileHover={{
+                scale: 1.05,
+                rotate: 2,
+              }}
+              whileTap={{
+                scale: 0.96,
+              }}
+              className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white p-1 shadow-[0_8px_24px_rgba(27,79,89,0.15)] dark:border-slate-700 dark:bg-slate-900"
+            >
+              <Image
+                src="/logo.png"
+                alt="Logo EL MOUSANID AI"
+                width={48}
+                height={48}
+                priority
+                className="h-full w-full object-contain"
+              />
+            </motion.div>
 
-              <div className="leading-tight">
-                <p className="text-xl font-black tracking-tight text-slate-950 dark:text-slate-100">
-                  ACA
-                </p>
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  Accompagnement &amp; soutien
-                </p>
-              </div>
-            </Link>
+            <div className="hidden leading-tight sm:block">
+              <p className="whitespace-nowrap text-[17px] font-black tracking-tight text-[#143F47] transition group-hover:text-[#1B4F59] dark:text-teal-300">
+                EL MOUSANID AI
+              </p>
 
-            <div className="hidden items-center gap-2 lg:flex">
-              <motion.div
-                initial="hidden"
-                animate="visible"
-                className="flex items-center gap-1 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-1 dark:border-slate-700/60 dark:bg-slate-800/60"
-              >
-                <NavLink
-                  href="/"
-                  icon={<Home size={16} />}
-                  variants={navLinkVariants}
-                  custom={0}
+              <p className="mt-0.5 whitespace-nowrap text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                Accompagnement &amp; soutien
+              </p>
+            </div>
+          </Link>
+
+          {/* NAVIGATION ORDINATEUR */}
+          <div className="ml-auto hidden min-w-0 items-center gap-3 xl:flex">
+            <div className="flex items-center gap-1 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-1.5 shadow-inner shadow-slate-200/20 dark:border-slate-700 dark:bg-slate-900">
+              {principalItems.map((item) => (
+                <DesktopNavLink
+                  key={item.href}
+                  item={item}
+                  active={activeHref === item.href}
+                />
+              ))}
+
+              {secondaryItems.length > 0 && (
+                <div
+                  ref={moreMenuRef}
+                  className="relative"
                 >
-                  Accueil
-                </NavLink>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMoreMenuOpen(
+                        (currentValue) => !currentValue,
+                      );
+                    }}
+                    style={
+                      hasActiveSecondaryItem
+                        ? { color: "#ffffff" }
+                        : undefined
+                    }
+                    className={[
+                      "inline-flex h-10 items-center gap-2 rounded-xl px-3.5 text-sm font-bold transition",
+                      hasActiveSecondaryItem
+                        ? "bg-[#1B4F59] !text-white shadow-md shadow-teal-950/20 hover:!text-white"
+                        : "text-slate-600 hover:bg-white hover:text-[#1B4F59] hover:shadow-sm dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-teal-300",
+                    ].join(" ")}
+                    aria-expanded={isMoreMenuOpen}
+                    aria-haspopup="menu"
+                  >
+                    <Menu
+                      size={17}
+                      color={
+                        hasActiveSecondaryItem
+                          ? "#ffffff"
+                          : undefined
+                      }
+                    />
 
-                {!isLoggedIn && (
-                  <>
-                    <NavLink
-                      href="/register"
-                      icon={<UserRound size={16} />}
-                      variants={navLinkVariants}
-                      custom={1}
+                    <span
+                      className={
+                        hasActiveSecondaryItem
+                          ? "!text-white"
+                          : ""
+                      }
                     >
-                      Créer un compte
-                    </NavLink>
+                      Plus
+                    </span>
 
-                    <NavLink
-                      href="/login"
-                      icon={<ShieldCheck size={16} />}
-                      variants={navLinkVariants}
-                      custom={2}
-                    >
-                      Connexion
-                    </NavLink>
-                  </>
-                )}
+                    <ChevronDown
+                      size={15}
+                      color={
+                        hasActiveSecondaryItem
+                          ? "#ffffff"
+                          : undefined
+                      }
+                      className={[
+                        "transition-transform duration-200",
+                        isMoreMenuOpen ? "rotate-180" : "",
+                      ].join(" ")}
+                    />
+                  </button>
 
-                {isLoggedIn && role === "USER" && (
-                  <>
-                    <NavLink
-                      href="/dashboard"
-                      icon={<UserRound size={16} />}
-                      variants={navLinkVariants}
-                      custom={1}
-                    >
-                      Mon espace
-                    </NavLink>
+                  <AnimatePresence>
+                    {isMoreMenuOpen && (
+                      <motion.div
+                        initial={{
+                          opacity: 0,
+                          y: 8,
+                          scale: 0.98,
+                        }}
+                        animate={{
+                          opacity: 1,
+                          y: 0,
+                          scale: 1,
+                        }}
+                        exit={{
+                          opacity: 0,
+                          y: 8,
+                          scale: 0.98,
+                        }}
+                        transition={{
+                          duration: 0.16,
+                        }}
+                        role="menu"
+                        className="absolute right-0 top-[calc(100%+14px)] w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_20px_60px_rgba(15,23,42,0.16)] dark:border-slate-700 dark:bg-slate-900"
+                      >
+                        <p className="px-3 pb-2 pt-1 text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">
+                          Autres fonctionnalités
+                        </p>
 
-                    <NavLink
-                      href="/questionnaire"
-                      icon={<ClipboardList size={16} />}
-                      variants={navLinkVariants}
-                      custom={2}
-                    >
-                      Analyse Rapide
-                    </NavLink>
-
-                    <NavLink
-                      href="/chat"
-                      icon={<HandHeart size={16} />}
-                      variants={navLinkVariants}
-                      custom={3}
-                    >
-                      Soutien
-                    </NavLink>
-
-                    <NavLink
-                      href="/tasks"
-                      icon={<Target size={16} />}
-                      variants={navLinkVariants}
-                      custom={4}
-                    >
-                      Mes tâches
-                    </NavLink>
-
-                    <NavLink
-                      href="/recommendations"
-                      icon={<ShieldCheck size={16} />}
-                      variants={navLinkVariants}
-                      custom={5}
-                    >
-                      Orientation
-                    </NavLink>
-
-                    <NavLink
-                      href="/appointments"
-                      icon={<CalendarCheck size={16} />}
-                      variants={navLinkVariants}
-                      custom={6}
-                    >
-                      Rendez-vous
-                    </NavLink>
-                  </>
-                )}
-
-                {isLoggedIn && role === "PSYCHOLOGIST" && (
-                  <>
-                    <NavLink
-                      href="/psychologist"
-                      icon={<UserRound size={16} />}
-                      variants={navLinkVariants}
-                      custom={1}
-                    >
-                      Espace psychologue
-                    </NavLink>
-
-                    <NavLink
-                      href="/psychologist/patients"
-                      icon={<UsersRound size={16} />}
-                      variants={navLinkVariants}
-                      custom={2}
-                    >
-                      Patients suivis
-                    </NavLink>
-
-                    <NavLink
-                      href="/psychologist/tasks"
-                      icon={<ListChecks size={16} />}
-                      variants={navLinkVariants}
-                      custom={3}
-                    >
-                      Tâches
-                    </NavLink>
-                  </>
-                )}
-
-                {isLoggedIn && (role === "ADMIN" || role === "SUPER_ADMIN") && (
-                  <>
-                    <NavLink
-                      href="/admin"
-                      icon={<ShieldCheck size={16} />}
-                      variants={navLinkVariants}
-                      custom={1}
-                    >
-                      Administration
-                    </NavLink>
-
-                    <NavLink
-                      href="/admin/psychologists"
-                      icon={<UsersRound size={16} />}
-                      variants={navLinkVariants}
-                      custom={2}
-                    >
-                      Psychologues
-                    </NavLink>
-
-                    <NavLink
-                      href="/admin/payments"
-                      icon={<CreditCard size={16} />}
-                      variants={navLinkVariants}
-                      custom={3}
-                    >
-                      Paiements
-                    </NavLink>
-
-                    <NavLink
-                      href="/admin/payment-methods"
-                      icon={<Banknote size={16} />}
-                      variants={navLinkVariants}
-                      custom={4}
-                    >
-                      Méthodes paiement
-                    </NavLink>
-
-                    <NavLink
-                      href="/admin/alerts"
-                      icon={<Bell size={16} />}
-                      variants={navLinkVariants}
-                      custom={5}
-                    >
-                      Alertes
-                    </NavLink>
-                  </>
-                )}
-              </motion.div>
-
-              {isLoggedIn && (
-                <motion.button
-                  whileHover={{ y: -1 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={logout}
-                  className="ml-2 inline-flex items-center gap-2 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-600 transition hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
-                >
-                  <LogOut size={16} />
-                  Déconnexion
-                </motion.button>
+                        <div className="space-y-1">
+                          {secondaryItems.map((item) => (
+                            <DropdownNavLink
+                              key={item.href}
+                              item={item}
+                              active={activeHref === item.href}
+                              onClick={() =>
+                                setIsMoreMenuOpen(false)
+                              }
+                            />
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               )}
             </div>
 
-            <div className="flex items-center gap-2 lg:hidden">
-              <button
-                onClick={toggleMobileMenu}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                aria-label="Ouvrir le menu"
+            {/* BOUTON DÉCONNEXION */}
+            {isLoggedIn && (
+              <motion.button
+                type="button"
+                whileHover={{
+                  y: -1,
+                }}
+                whileTap={{
+                  scale: 0.97,
+                }}
+                onClick={handleLogout}
+                className="inline-flex h-[46px] shrink-0 items-center gap-2 rounded-2xl border border-red-100 bg-red-50 px-4 text-sm font-bold text-red-600 shadow-sm transition hover:border-red-200 hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
               >
-                {isMobileMenuOpen ? <X size={23} /> : <Menu size={23} />}
-              </button>
-            </div>
+                <LogOut size={17} />
+                <span>Déconnexion</span>
+              </motion.button>
+            )}
           </div>
+
+          {/* BOUTON MENU MOBILE */}
+          <div className="ml-auto flex items-center xl:hidden">
+            <button
+              type="button"
+              onClick={toggleMobileMenu}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-[#1B4F59] shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-teal-300 dark:hover:bg-slate-800"
+              aria-label={
+                isMobileMenuOpen
+                  ? "Fermer le menu"
+                  : "Ouvrir le menu"
+              }
+              aria-expanded={isMobileMenuOpen}
+            >
+              {isMobileMenuOpen ? (
+                <X size={23} />
+              ) : (
+                <Menu size={23} />
+              )}
+            </button>
+          </div>
+
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-teal-300/60 to-transparent dark:via-teal-700/60" />
         </div>
       </nav>
 
+      {/* MENU MOBILE ET TABLETTE */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+            <motion.button
+              type="button"
+              initial={{
+                opacity: 0,
+              }}
+              animate={{
+                opacity: 1,
+              }}
+              exit={{
+                opacity: 0,
+              }}
               onClick={closeMobileMenu}
-              className="fixed inset-0 z-40 bg-slate-950/30 backdrop-blur-sm lg:hidden"
+              aria-label="Fermer le menu"
+              className="fixed inset-0 z-[60] cursor-default bg-slate-950/45 backdrop-blur-sm xl:hidden"
             />
 
             <motion.aside
-              initial="closed"
-              animate="open"
-              exit="closed"
-              variants={mobileMenuVariants}
+              initial={{
+                opacity: 0,
+                x: "100%",
+              }}
+              animate={{
+                opacity: 1,
+                x: 0,
+              }}
+              exit={{
+                opacity: 0,
+                x: "100%",
+              }}
               transition={{
                 type: "spring",
-                stiffness: 280,
-                damping: 30,
+                stiffness: 300,
+                damping: 32,
               }}
-              className="fixed right-0 top-0 z-50 h-full w-[86%] max-w-sm border-l border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900 lg:hidden"
+              className="fixed right-0 top-0 z-[70] flex h-dvh w-[88%] max-w-[390px] flex-col border-l border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-950 xl:hidden"
             >
-              <div className="flex h-full flex-col">
-                <div className="flex h-20 items-center justify-between border-b border-slate-100 px-5 dark:border-slate-800">
-                  <Link
-                    href="/"
-                    onClick={closeMobileMenu}
-                    className="flex items-center gap-3"
-                  >
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#1B4F59] text-white dark:bg-teal-500">
-                      <HeartPulse size={23} />
-                    </div>
+              {/* ENTÊTE MOBILE */}
+              <div className="flex h-[82px] shrink-0 items-center justify-between border-b border-slate-100 px-5 dark:border-slate-800">
+                <Link
+                  href="/"
+                  onClick={closeMobileMenu}
+                  className="flex min-w-0 items-center gap-3"
+                >
+                  <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white p-1 shadow-md dark:border-slate-700 dark:bg-slate-900">
+                    <Image
+                      src="/logo.png"
+                      alt="Logo EL MOUSANID AI"
+                      width={48}
+                      height={48}
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
 
-                    <div>
-                      <p className="text-lg font-black text-slate-950 dark:text-slate-100">
-                        ACA
-                      </p>
-                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                        Accompagnement
-                      </p>
-                    </div>
-                  </Link>
+                  <div className="min-w-0 leading-tight">
+                    <p className="truncate text-base font-black text-[#143F47] dark:text-teal-300">
+                      EL MOUSANID AI
+                    </p>
 
+                    <p className="mt-1 truncate text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                      Accompagnement &amp; soutien
+                    </p>
+                  </div>
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={closeMobileMenu}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                  aria-label="Fermer le menu"
+                >
+                  <X size={21} />
+                </button>
+              </div>
+
+              {/* LIENS MOBILE */}
+              <div className="flex-1 overflow-y-auto px-5 py-6">
+                <div className="mb-4 rounded-2xl bg-gradient-to-br from-[#E9F7F6] to-[#F4FBFB] px-4 py-3 dark:from-teal-950/50 dark:to-slate-900">
+                  <p className="text-[11px] font-black uppercase tracking-[0.17em] text-[#1B4F59] dark:text-teal-300">
+                    {sectionTitle}
+                  </p>
+
+                  <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Accédez rapidement à vos fonctionnalités.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  {allItems.map((item) => (
+                    <MobileNavLink
+                      key={item.href}
+                      item={item}
+                      active={activeHref === item.href}
+                      onClick={closeMobileMenu}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* DÉCONNEXION MOBILE */}
+              {isLoggedIn && (
+                <div className="shrink-0 border-t border-slate-100 bg-slate-50/70 p-5 dark:border-slate-800 dark:bg-slate-900/60">
                   <button
-                    onClick={closeMobileMenu}
-                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                    aria-label="Fermer le menu"
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-red-100 bg-red-50 text-sm font-bold text-red-600 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
                   >
-                    <X size={21} />
+                    <LogOut size={18} />
+                    Déconnexion
                   </button>
                 </div>
-
-                <div className="flex-1 space-y-2 overflow-y-auto px-5 py-6">
-                  <MobileNavLink
-                    href="/"
-                    icon={<Home size={18} />}
-                    onClick={closeMobileMenu}
-                  >
-                    Accueil
-                  </MobileNavLink>
-
-                  {!isLoggedIn && (
-                    <>
-                      <MobileNavLink
-                        href="/register"
-                        icon={<UserRound size={18} />}
-                        onClick={closeMobileMenu}
-                      >
-                        Créer un compte
-                      </MobileNavLink>
-
-                      <MobileNavLink
-                        href="/login"
-                        icon={<ShieldCheck size={18} />}
-                        onClick={closeMobileMenu}
-                      >
-                        Connexion
-                      </MobileNavLink>
-                    </>
-                  )}
-
-                  {isLoggedIn && role === "USER" && (
-                    <>
-                      <MobileSectionTitle>Mon parcours</MobileSectionTitle>
-
-                      <MobileNavLink
-                        href="/dashboard"
-                        icon={<UserRound size={18} />}
-                        onClick={closeMobileMenu}
-                      >
-                        Mon espace
-                      </MobileNavLink>
-
-                      <MobileNavLink
-                        href="/questionnaire"
-                        icon={<ClipboardList size={18} />}
-                        onClick={closeMobileMenu}
-                      >
-                        Questionnaire
-                      </MobileNavLink>
-
-                      <MobileNavLink
-                        href="/chat"
-                        icon={<HandHeart size={18} />}
-                        onClick={closeMobileMenu}
-                      >
-                        Soutien
-                      </MobileNavLink>
-
-                      <MobileNavLink
-                        href="/tasks"
-                        icon={<Target size={18} />}
-                        onClick={closeMobileMenu}
-                      >
-                        Mes tâches
-                      </MobileNavLink>
-
-                      <MobileNavLink
-                        href="/recommendations"
-                        icon={<ShieldCheck size={18} />}
-                        onClick={closeMobileMenu}
-                      >
-                        Orientation
-                      </MobileNavLink>
-
-                      <MobileNavLink
-                        href="/appointments"
-                        icon={<CalendarCheck size={18} />}
-                        onClick={closeMobileMenu}
-                      >
-                        Rendez-vous
-                      </MobileNavLink>
-                    </>
-                  )}
-
-                  {isLoggedIn && role === "PSYCHOLOGIST" && (
-                    <>
-                      <MobileSectionTitle>Suivi professionnel</MobileSectionTitle>
-
-                      <MobileNavLink
-                        href="/psychologist"
-                        icon={<UserRound size={18} />}
-                        onClick={closeMobileMenu}
-                      >
-                        Espace psychologue
-                      </MobileNavLink>
-
-                      <MobileNavLink
-                        href="/psychologist/patients"
-                        icon={<UsersRound size={18} />}
-                        onClick={closeMobileMenu}
-                      >
-                        Patients suivis
-                      </MobileNavLink>
-
-                      <MobileNavLink
-                        href="/psychologist/tasks"
-                        icon={<ListChecks size={18} />}
-                        onClick={closeMobileMenu}
-                      >
-                        Gérer les tâches
-                      </MobileNavLink>
-                    </>
-                  )}
-
-                  {isLoggedIn &&
-                    (role === "ADMIN" || role === "SUPER_ADMIN") && (
-                      <>
-                        <MobileSectionTitle>Gestion</MobileSectionTitle>
-
-                        <MobileNavLink
-                          href="/admin"
-                          icon={<ShieldCheck size={18} />}
-                          onClick={closeMobileMenu}
-                        >
-                          Administration
-                        </MobileNavLink>
-
-                        <MobileNavLink
-                          href="/admin/psychologists"
-                          icon={<UsersRound size={18} />}
-                          onClick={closeMobileMenu}
-                        >
-                          Psychologues
-                        </MobileNavLink>
-
-                        <MobileNavLink
-                          href="/admin/payments"
-                          icon={<CreditCard size={18} />}
-                          onClick={closeMobileMenu}
-                        >
-                          Paiements
-                        </MobileNavLink>
-
-                        <MobileNavLink
-                          href="/admin/payment-methods"
-                          icon={<Banknote size={18} />}
-                          onClick={closeMobileMenu}
-                        >
-                          Méthodes paiement
-                        </MobileNavLink>
-
-                        <MobileNavLink
-                          href="/admin/alerts"
-                          icon={<Bell size={18} />}
-                          onClick={closeMobileMenu}
-                        >
-                          Alertes
-                        </MobileNavLink>
-                      </>
-                    )}
-                </div>
-
-                {isLoggedIn && (
-                  <div className="border-t border-slate-100 p-5 dark:border-slate-800">
-                    <button
-                      onClick={() => {
-                        logout();
-                        closeMobileMenu();
-                      }}
-                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-600 transition hover:bg-red-100 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
-                    >
-                      <LogOut size={17} />
-                      Déconnexion
-                    </button>
-                  </div>
-                )}
-              </div>
+              )}
             </motion.aside>
           </>
         )}
       </AnimatePresence>
 
-      <div className="h-20" />
+      {/* ESPACE POUR LA NAVBAR FIXE */}
+      <div className="h-[76px]" />
     </>
   );
 }
 
-function NavLink({
-  href,
-  children,
-  variants,
-  custom,
-  icon,
+/* LIEN ORDINATEUR */
+function DesktopNavLink({
+  item,
+  active,
 }: {
-  href: string;
-  children: React.ReactNode;
-  variants: any;
-  custom: number;
-  icon?: React.ReactNode;
-}) {
-  return (
-    <motion.div custom={custom} variants={variants}>
-      <Link
-        href={href}
-        className="group relative inline-flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-white hover:text-[#1B4F59] hover:shadow-sm dark:text-slate-300 dark:hover:bg-slate-700/80 dark:hover:text-teal-300"
-      >
-        <span className="text-slate-400 transition group-hover:text-[#1B4F59] dark:text-slate-500 dark:group-hover:text-teal-300">
-          {icon}
-        </span>
-        {children}
-      </Link>
-    </motion.div>
-  );
-}
-
-function MobileNavLink({
-  href,
-  onClick,
-  children,
-  icon,
-}: {
-  href: string;
-  onClick: () => void;
-  children: React.ReactNode;
-  icon?: React.ReactNode;
+  item: NavItem;
+  active: boolean;
 }) {
   return (
     <Link
-      href={href}
-      onClick={onClick}
-      className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-teal-50 hover:text-[#1B4F59] dark:text-slate-200 dark:hover:bg-teal-500/10 dark:hover:text-teal-300"
+      href={item.href}
+      aria-current={active ? "page" : undefined}
+      style={active ? { color: "#ffffff" } : undefined}
+      className={[
+        "group inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-xl px-3.5 text-sm font-bold transition",
+        active
+          ? "bg-[#1B4F59] !text-white shadow-md shadow-teal-950/20 hover:!text-white"
+          : "text-slate-600 hover:bg-white hover:text-[#1B4F59] hover:shadow-sm dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-teal-300",
+      ].join(" ")}
     >
-      <span className="text-[#1B4F59] dark:text-teal-400">{icon}</span>
-      {children}
+      <span
+        style={active ? { color: "#ffffff" } : undefined}
+        className={
+          active
+            ? "!text-white"
+            : "text-slate-400 transition group-hover:text-[#1B4F59] dark:text-slate-500 dark:group-hover:text-teal-300"
+        }
+      >
+        {item.icon}
+      </span>
+
+      <span
+        style={active ? { color: "#ffffff" } : undefined}
+        className={active ? "!text-white" : ""}
+      >
+        {item.label}
+      </span>
     </Link>
   );
 }
 
-function MobileSectionTitle({ children }: { children: React.ReactNode }) {
+/* LIEN DU MENU PLUS */
+function DropdownNavLink({
+  item,
+  active,
+  onClick,
+}: {
+  item: NavItem;
+  active: boolean;
+  onClick: () => void;
+}) {
   return (
-    <p className="px-4 pt-4 text-xs font-black uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
-      {children}
-    </p>
+    <Link
+      href={item.href}
+      onClick={onClick}
+      aria-current={active ? "page" : undefined}
+      className={[
+        "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold transition",
+        active
+          ? "bg-[#1B4F59] !text-white shadow-sm"
+          : "text-slate-600 hover:bg-slate-50 hover:text-[#1B4F59] dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-teal-300",
+      ].join(" ")}
+    >
+      <span
+        style={active ? { color: "#ffffff" } : undefined}
+        className={
+          active
+            ? "!text-white"
+            : "text-slate-400"
+        }
+      >
+        {item.icon}
+      </span>
+
+      <span
+        style={active ? { color: "#ffffff" } : undefined}
+        className={active ? "!text-white" : ""}
+      >
+        {item.label}
+      </span>
+    </Link>
+  );
+}
+
+/* LIEN MOBILE */
+function MobileNavLink({
+  item,
+  active,
+  onClick,
+}: {
+  item: NavItem;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Link
+      href={item.href}
+      onClick={onClick}
+      aria-current={active ? "page" : undefined}
+      style={active ? { color: "#ffffff" } : undefined}
+      className={[
+        "flex min-h-12 items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition",
+        active
+          ? "bg-[#1B4F59] !text-white shadow-lg shadow-teal-950/15"
+          : "text-slate-700 hover:bg-teal-50 hover:text-[#1B4F59] dark:text-slate-200 dark:hover:bg-teal-500/10 dark:hover:text-teal-300",
+      ].join(" ")}
+    >
+      <span
+        style={active ? { color: "#ffffff" } : undefined}
+        className={[
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+          active
+            ? "bg-white/15 !text-white"
+            : "bg-[#E9F7F6] text-[#1B4F59] dark:bg-teal-500/10 dark:text-teal-300",
+        ].join(" ")}
+      >
+        {item.icon}
+      </span>
+
+      <span
+        style={active ? { color: "#ffffff" } : undefined}
+        className={active ? "!text-white" : ""}
+      >
+        {item.label}
+      </span>
+    </Link>
   );
 }

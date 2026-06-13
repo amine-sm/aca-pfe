@@ -1,29 +1,74 @@
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
+
 import "./globals.css";
+
 import { AuthProvider } from "./components/AuthProvider";
 import { Navbar } from "./components/Navbar";
 import { ThemeProvider } from "./components/ThemeProvider";
 
-export const metadata = {
-  title: "ACA | Addiction Care Assistant",
+export const metadata: Metadata = {
+  title: {
+    default: "EL MOUSANID AI",
+    template: "%s | EL MOUSANID AI",
+  },
+
   description:
-    "Plateforme d’accompagnement avec IA, psychologues, rendez-vous et paiements",
+    "Plateforme intelligente d’accompagnement, de soutien psychologique et de suivi personnalisé.",
+
+  icons: {
+    icon: [
+      {
+        url: "/logo.png",
+        type: "image/png",
+        sizes: "40x40",
+      },
+      {
+        url: "/logo.png",
+        type: "image/png",
+        sizes: "192x192",
+      },
+    ],
+
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode;
-}) {
+}: Readonly<{
+  children: ReactNode;
+}>) {
   return (
     <html lang="fr" suppressHydrationWarning>
       <head>
-        {/* Évite le flash de light->dark au chargement */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('aca-theme');var d=t==='dark'||(t!=='light'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d){document.documentElement.classList.add('dark');document.body&&document.body.classList.add('dark-active');}}catch(e){}})();`,
+            __html: `
+              (function () {
+                try {
+                  var theme = localStorage.getItem("aca-theme");
+
+                  var isDark =
+                    theme === "dark" ||
+                    (
+                      theme !== "light" &&
+                      window.matchMedia(
+                        "(prefers-color-scheme: dark)"
+                      ).matches
+                    );
+
+                  if (isDark) {
+                    document.documentElement.classList.add("dark");
+                  }
+                } catch (error) {}
+              })();
+            `,
           }}
         />
       </head>
+
       <body>
         <ThemeProvider>
           <AuthProvider>

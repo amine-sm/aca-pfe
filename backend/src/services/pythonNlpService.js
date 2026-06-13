@@ -5,13 +5,23 @@ const NLP_SERVICE_URL =
 // CHECK PYTHON SERVICE
 // =======================
 async function checkPythonService() {
-  const response = await fetch(`${NLP_SERVICE_URL}/`);
+  try {
+    const response = await fetch(`${NLP_SERVICE_URL}/`);
 
-  if (!response.ok) {
-    throw new Error(`FastAPI indisponible : ${response.status}`);
+    if (!response.ok) {
+      throw new Error(`FastAPI indisponible : ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Erreur checkPythonService:", error.message);
+
+    return {
+      status: "error",
+      message: "FastAPI indisponible",
+      url: NLP_SERVICE_URL,
+    };
   }
-
-  return response.json();
 }
 
 // =======================
@@ -35,13 +45,18 @@ async function analyzeMessageWithPython(message, questionnaire = {}) {
       throw new Error(`FastAPI /nlp error ${response.status}: ${text}`);
     }
 
-    return response.json();
+    return await response.json();
   } catch (error) {
-    console.error("Erreur analyzeMessageWithPython:", error);
+    console.error("Erreur analyzeMessageWithPython:", error.message);
 
-    throw new Error(
-      "FastAPI /nlp indisponible. Lance le backend Python sur http://127.0.0.1:8000"
-    );
+    return {
+      emotional_state: "stable",
+      risk_level: "faible",
+      summary_context: "",
+      error: true,
+      message:
+        "FastAPI /nlp indisponible. Lance le service Python sur http://127.0.0.1:8000",
+    };
   }
 }
 
@@ -73,13 +88,14 @@ async function generateReplyWithPython({
       throw new Error(`FastAPI /chat error ${response.status}: ${text}`);
     }
 
-    return response.json();
+    return await response.json();
   } catch (error) {
-    console.error("Erreur generateReplyWithPython:", error);
+    console.error("Erreur generateReplyWithPython:", error.message);
 
     return {
       reply:
         "Je rencontre un problème technique avec le modèle IA, mais ton message a bien été reçu. Peux-tu continuer à expliquer ce que tu ressens ?",
+      error: true,
     };
   }
 }
